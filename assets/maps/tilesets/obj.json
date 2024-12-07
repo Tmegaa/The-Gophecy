@@ -1,0 +1,144 @@
+{ "columns":0,
+ "grid":
+    {
+     "height":1,
+     "orientation":"orthogonal",
+     "width":1
+    },
+ "margin":0,
+ "name":"obj",
+ "spacing":0,
+ "tilecount":21,
+ "tiledversion":"1.11.0",
+ "tileheight":144,
+ "tiles":[
+        {
+         "id":0,
+         "image":"..\/..\/objects\/map (7).png",
+         "imageheight":97,
+         "imagewidth":96
+        }, 
+        {
+         "id":1,
+         "image":"..\/..\/objects\/map (2).png",
+         "imageheight":56,
+         "imagewidth":48
+        }, 
+        {
+         "id":2,
+         "image":"..\/..\/objects\/map (3).png",
+         "imageheight":144,
+         "imagewidth":42
+        }, 
+        {
+         "id":3,
+         "image":"..\/..\/objects\/map (6).png",
+         "imageheight":55,
+         "imagewidth":97
+        }, 
+        {
+         "id":4,
+         "image":"..\/..\/objects\/map (27).png",
+         "imageheight":48,
+         "imagewidth":27
+        }, 
+        {
+         "id":5,
+         "image":"..\/..\/objects\/map (9).png",
+         "imageheight":24,
+         "imagewidth":48
+        }, 
+        {
+         "id":6,
+         "image":"..\/..\/objects\/map (10).png",
+         "imageheight":24,
+         "imagewidth":48
+        }, 
+        {
+         "id":7,
+         "image":"..\/..\/objects\/map (11).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":8,
+         "image":"..\/..\/objects\/map (12).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":9,
+         "image":"..\/..\/objects\/map (13).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":10,
+         "image":"..\/..\/objects\/map (14).png",
+         "imageheight":48,
+         "imagewidth":24
+        }, 
+        {
+         "id":11,
+         "image":"..\/..\/objects\/map (15).png",
+         "imageheight":48,
+         "imagewidth":24
+        }, 
+        {
+         "id":12,
+         "image":"..\/..\/objects\/map (16).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":13,
+         "image":"..\/..\/objects\/map (17).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":14,
+         "image":"..\/..\/objects\/map (18).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":15,
+         "image":"..\/..\/objects\/map (19).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":16,
+         "image":"..\/..\/objects\/map (20).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":17,
+         "image":"..\/..\/objects\/map (22).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":18,
+         "image":"..\/..\/objects\/map (23).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":19,
+         "image":"..\/..\/objects\/map (25).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":20,
+         "image":"..\/..\/objects\/map (29).png",
+         "imageheight":36,
+         "imagewidth":27
+        }],
+ "tilewidth":97,
+ "type":"tileset",
+ "version":"1.10"
+}
