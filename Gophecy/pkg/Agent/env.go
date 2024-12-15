@@ -23,3 +23,14 @@ func NewEnvironment(ags []Agent) (env *Environnement) {
 
 	return &Environnement{ags: ags, nbrAgents: counter}
 }
+
+func (env *Environnement) AddAgent(ag Agent) {
+	env.ags = append(env.ags, ag)
+	nbr, err := env.nbrAgents.Load(ag.TypeAgt)
+	if !err {
+		nbr = nbr.(int) + 1
+		env.nbrAgents.Store(ag.TypeAgt, nbr)
+	}else {
+	env.nbrAgents.Store(ag.TypeAgt, 1)
+	}	
+}

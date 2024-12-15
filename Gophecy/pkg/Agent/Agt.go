@@ -3,6 +3,8 @@ package pkg
 import (
 	ut "Gophecy/pkg/Utilitaries"
 	"log"
+
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type InterfaceAgent interface {
@@ -25,24 +27,25 @@ const (
 type IdAgent string
 
 type Agent struct {
-	env               *Environnement
-	id                IdAgent
-	velocite          float64
-	acuite            float64
-	position          ut.Position
-	opinion           float64
-	charisme          map[IdAgent]float64 //influence d'un agent sur un autre
-	relation          map[IdAgent]float64
-	personalParameter float64
-	poid_rel          []float64
-	vivant            bool
-	typeAgt           TypeAgent
-	syncChan          chan int
+	Env               *Environnement
+	Id                IdAgent
+	Velocite          float64
+	Acuite            float64
+	Position          ut.Position
+	Opinion           float64
+	Charisme          map[IdAgent]float64 //influence d'un agent sur un autre
+	Relation          map[IdAgent]float64
+	PersonalParameter float64
+	Poid_rel          []float64
+	Vivant            bool
+	TypeAgt           TypeAgent
+	SyncChan          chan int
+	Img               *ebiten.Image
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
 	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64,
-	agent InterfaceAgent, typeAgt TypeAgent, syncChan chan int) *Agent {
+	agent InterfaceAgent, typeAgt TypeAgent, syncChan chan int, img *ebiten.Image ) *Agent {
 
 	//calcul des poids relatif pour chaque agents
 	poid_rel := make([]float64, 0)
@@ -52,57 +55,26 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		poid_rel = append(poid_rel, char)
 	}
 
-	return &Agent{env: env, id: id, velocite: velocite, acuite: acuite,
-		position: position, opinion: opinion, charisme: charisme, relation: relation,
-		personalParameter: personalParameter, poid_rel: poid_rel,
-		vivant: true, typeAgt: typeAgt, syncChan: syncChan}
+	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
+		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
+		PersonalParameter: personalParameter, Poid_rel: poid_rel,
+		Vivant: true, TypeAgt: typeAgt, SyncChan: syncChan, Img: img}
 }
 
-func (agt *Agent) Position() ut.Position {
-	return agt.position
-}
-
-func (agt *Agent) ID() IdAgent {
-	return agt.id
-}
-
-func (agt *Agent) Opinion() float64 {
-	return agt.opinion
-}
-
-func (agt *Agent) Charisme() map[IdAgent]float64 {
-	return agt.charisme
-}
-
-func (agt *Agent) Relation() map[IdAgent]float64 {
-	return agt.relation
-}
-
-func (agt *Agent) PersonalParameter() float64 {
-	return agt.personalParameter
-}
-
-func (agt *Agent) Vivant() bool {
-	return agt.vivant
-}
-
-func (agt *Agent) TypeAgt() TypeAgent {
-	return agt.typeAgt
-}
 
 func (ag *Agent) Start() {
-	log.Printf("%s lancement...\n", ag.id)
+	log.Printf("%s lancement...\n", ag.Id)
 
 	go func() {
-		env := ag.env
+		env := ag.Env
 		var step int
 		for {
-			step = <-ag.syncChan
+			step = <-ag.SyncChan
 			ag.Percept(env)
 			ag.Deliberate()
 			ag.Act(env)
 
-			ag.syncChan <- step
+			ag.SyncChan <- step
 		}
 	}()
 }
