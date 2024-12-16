@@ -2,14 +2,18 @@ package simulation
 
 import (
 	ag "Gophecy/pkg/Agent"
+	carte "Gophecy/pkg/Carte"
+	tile "Gophecy/pkg/Tile"
 	ut "Gophecy/pkg/Utilitaries"
 	"fmt"
+	"image"
+	"image/color"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 
-	"math/rand"
-
+	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
@@ -21,6 +25,7 @@ type Simulation struct {
 	step        int //Stats
 	start       time.Time
 	syncChans   sync.Map
+	carte       carte.Carte
 }
 
 
@@ -33,6 +38,24 @@ func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
 	// Creation de l'environnement
 	env := *ag.NewEnvironment(agents)
 
+	// Creation de la carte
+	tilemapImg, _, err := ebitenutil.NewImageFromFile("assets/images/img.png")
+	if err != nil {
+		// handle error
+		log.Fatal(err)
+	}
+
+	tilemapJSON, err := tile.NewTilemapJSON("assets/maps/spawn.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tilesets, err := tilemapJSON.GenTilesets()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	carte := carte.NewCarte(*tilemapJSON, tilesets, tilemapImg)
 
 	// Creation des agents
 	agentsImg, _, err := ebitenutil.NewImageFromFile("assets/images/ninja.png")
@@ -63,8 +86,67 @@ func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
 		env.AddAgent(agents[i])
 	}
 	
-	return &Simulation{env: env, agents: agents, maxStep: maxStep, maxDuration: maxDuration, step: 0, start: time.Now()}
+	return &Simulation{env: env, agents: agents, maxStep: maxStep, maxDuration: maxDuration, step: 0, start: time.Now(), carte: *carte}
 }
+
+
+func (g *Simulation) Draw(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{120, 180, 255, 255})
+
+	opts := ebiten.DrawImageOptions{}
+
+	// draw the tilemap
+	for layerIdx, layer := range g.carte.TilemapJSON.Layers {
+		for i, tileID := range layer.Data {
+			if tileID == 0 {
+				continue
+			}
+			
+			x := i % layer.Width
+			y := i / layer.Width
+			
+			y *= 24
+			x *= 24
+
+
+			img := g.carte.Tilesets[layerIdx].Img(tileID)
+			
+			opts.GeoM.Translate(float64(x), float64(y))
+
+			opts.GeoM.Translate(0.0, -(float64(img.Bounds().Dy()) + 24.0))
+
+			screen.DrawImage(
+				img,
+				&opts,
+			)
+
+			opts.GeoM.Reset()
+		}
+	}
+
+	// draw the agents
+	for _, agent := range g.agents {
+		opts.GeoM.Translate(agent.Position.X, agent.Position.Y)
+		screen.DrawImage(
+			agent.Img.SubImage(
+				image.Rect(0, 0, 16, 16),
+			).(*ebiten.Image),
+			&opts,
+		)
+
+		opts.GeoM.Reset()
+	}
+
+}
+
+func (g *Simulation) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
+	return 320, 240
+}
+
+func (sim *Simulation) Update() error {	
+	return nil
+}
+
 
 
 
