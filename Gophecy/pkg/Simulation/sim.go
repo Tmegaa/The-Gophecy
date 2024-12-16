@@ -34,7 +34,6 @@ func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
 	env := *ag.NewEnvironment(agents)
 
 
-
 	// Creation des agents
 	agentsImg, _, err := ebitenutil.NewImageFromFile("assets/images/ninja.png")
 	if err != nil {

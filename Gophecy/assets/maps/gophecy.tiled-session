@@ -1,0 +1,77 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "spawn.json",
+    "expandedProjectPaths": [
+        ".",
+        "tilesets"
+    ],
+    "file.lastUsedOpenFilter": "Todos os Ficheiros (*)",
+    "fileStates": {
+        "spawn.json": {
+            "scale": 0.75,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 584,
+                "y": 469.99999999999994
+            }
+        },
+        "tilesets/decoration.json": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/img.json": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/img.ts": {
+            "scaleInDock": 1
+        },
+        "tilesets/img.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/img2.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/obj.json": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "frame.defaultDuration": 100,
+    "last.imagePath": "D:/VsCode/The-Gophecy/assets/objects",
+    "map.height": 30,
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 24,
+    "map.tileWidth": 24,
+    "map.width": 50,
+    "openFiles": [
+        "spawn.json",
+        "tilesets/img.json",
+        "tilesets/obj.json"
+    ],
+    "project": "gophecy.tiled-project",
+    "recentFiles": [
+        "tilesets/obj.json",
+        "tilesets/img.json",
+        "spawn.json",
+        "tilesets/decoration.json",
+        "tilesets/img2.tsx",
+        "tilesets/img.tsx"
+    ],
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 24,
+        "width": 24
+    },
+    "tileset.type": 1
+}
