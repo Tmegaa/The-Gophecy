@@ -15,6 +15,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type Simulation struct {
@@ -55,7 +56,36 @@ func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
 		log.Fatal(err)
 	}
 
-	carte := carte.NewCarte(*tilemapJSON, tilesets, tilemapImg)
+	coliders := []image.Rectangle{}
+	for layerIdx, layer := range tilemapJSON.Layers {
+		
+		for i, tileID := range layer.Data {
+
+
+			if tileID == 0 {
+				continue	
+			}else if layerIdx != 0  {
+				x := i % layer.Width
+				y := i / layer.Width
+				
+				y *= 24
+				x *= 24
+				
+				img := tilesets[layerIdx].Img(tileID)
+
+				offsetY := -(img.Bounds().Dy() + 24)
+				y += offsetY
+
+				yy := img.Bounds().Dy()
+				xx := img.Bounds().Dx()
+
+				coliders = append(coliders, image.Rect(x, y, x + xx, y + yy))
+			}
+		}		
+	}
+
+
+	carte := carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders)
 
 	// Creation des agents
 	agentsImg, _, err := ebitenutil.NewImageFromFile("assets/images/ninja.png")
@@ -137,6 +167,17 @@ func (g *Simulation) Draw(screen *ebiten.Image) {
 		opts.GeoM.Reset()
 	}
 
+	//draw coliders
+	for _, colider := range g.carte.Coliders {
+		vector.StrokeRect(
+			screen, 
+			float32(colider.Min.X), 
+			float32(colider.Min.Y), 
+			float32(colider.Dx()), 
+			float32(colider.Dy()), 
+			float32(1.0),
+			color.RGBA{0, 0, 0, 0},true)
+	}
 }
 
 func (g *Simulation) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

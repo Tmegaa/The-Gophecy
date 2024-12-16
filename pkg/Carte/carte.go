@@ -11,14 +11,15 @@ type Carte struct {
 	TilemapJSON tile.TilemapJSON
 	Tilesets    []tile.Tileset
 	TilemapImg  *ebiten.Image
-	coliders []image.Rectangle
+	Coliders []image.Rectangle
 }
 
-func NewCarte(tilemapJSON tile.TilemapJSON, tilesets []tile.Tileset, tilemapImg *ebiten.Image) *Carte {
+func NewCarte(tilemapJSON tile.TilemapJSON, tilesets []tile.Tileset, tilemapImg *ebiten.Image, coliders []image.Rectangle) *Carte {
 	return &Carte{
 		TilemapJSON: tilemapJSON,
 		Tilesets:    tilesets,
 		TilemapImg:  tilemapImg,
+		Coliders: coliders,
 	}
 }
 
