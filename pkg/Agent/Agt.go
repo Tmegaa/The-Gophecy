@@ -45,7 +45,7 @@ type Agent struct {
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
 	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64,
-	agent InterfaceAgent, typeAgt TypeAgent, syncChan chan int, img *ebiten.Image ) *Agent {
+	agent InterfaceAgent, typeAgt TypeAgent, syncChan chan int, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatif pour chaque agents
 	poid_rel := make([]float64, 0)
@@ -61,6 +61,13 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		Vivant: true, TypeAgt: typeAgt, SyncChan: syncChan, Img: img}
 }
 
+func (ag *Agent) ID() IdAgent {
+	return ag.Id
+}
+
+func (ag *Agent) AgtPosition() ut.Position {
+	return ag.Position
+}
 
 func (ag *Agent) Start() {
 	log.Printf("%s lancement...\n", ag.Id)
