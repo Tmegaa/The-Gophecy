@@ -26,11 +26,20 @@ func NewEnvironment(ags []Agent) (env *Environnement) {
 
 func (env *Environnement) AddAgent(ag Agent) {
 	env.ags = append(env.ags, ag)
-	nbr, err := env.nbrAgents.Load(ag.TypeAgt)
-	if !err {
-		nbr = nbr.(int) + 1
-		env.nbrAgents.Store(ag.TypeAgt, nbr)
-	}else {
-	env.nbrAgents.Store(ag.TypeAgt, 1)
-	}	
+
+	// Charger le nombre actuel d'agents de ce type
+	value, exists := env.nbrAgents.Load(ag.TypeAgt)
+	if exists {
+		// Si la clé existe, convertir en int et incrémenter
+		if nbr, ok := value.(int); ok {
+			env.nbrAgents.Store(ag.TypeAgt, nbr+1)
+		} else {
+			// Si la valeur n'est pas un int, gérer l'erreur ou initialiser à 1
+			env.nbrAgents.Store(ag.TypeAgt, 1)
+		}
+	} else {
+		// Si la clé n'existe pas, initialiser à 1
+		env.nbrAgents.Store(ag.TypeAgt, 1)
+	}
 }
+

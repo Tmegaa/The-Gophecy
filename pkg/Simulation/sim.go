@@ -18,91 +18,78 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
+const (
+	TileSize        = 24
+	AgentImageSize  = 16
+	WindowWidth     = 1200
+	WindowHeight    = 670
+	NumAgents       = 5
+	AssetsPath      = "assets/images/"
+	MapsPath        = "assets/maps/"
+	AgentImageFile  = "ninja.png"
+	TilemapImage    = "img.png"
+	TilemapJSONFile = "spawn.json"
+	
+)
+
 type Simulation struct {
 	env         ag.Environnement
 	agents      []ag.Agent
 	maxStep     int
 	maxDuration time.Duration
-	step        int //Stats
+	step        int
 	start       time.Time
 	syncChans   sync.Map
 	carte       carte.Carte
+	selected    *ag.Agent
 }
 
-
+// NewSimulation initializes a new simulation
 func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
-	
-	const numAgents = 5
-	agents := make([]ag.Agent, numAgents)
+	initializeWindow()
+	env := createEnvironment()
+	carte := loadMap()
+	agents := createAgents(env)
 
-
-	// Creation de l'environnement
-	env := *ag.NewEnvironment(agents)
-
-	// Creation de la carte
-	tilemapImg, _, err := ebitenutil.NewImageFromFile("assets/images/img.png")
-	if err != nil {
-		// handle error
-		log.Fatal(err)
+	return &Simulation{
+		env:         env,
+		agents:      agents,
+		maxStep:     maxStep,
+		maxDuration: maxDuration,
+		start:       time.Now(),
+		carte:       *carte,
 	}
+}
 
-	tilemapJSON, err := tile.NewTilemapJSON("assets/maps/spawn.json")
-	if err != nil {
-		log.Fatal(err)
-	}
+func initializeWindow() {
+	ebiten.SetWindowSize(WindowWidth, WindowHeight)
+	ebiten.SetWindowTitle("Simulation")
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
+}
 
-	tilesets, err := tilemapJSON.GenTilesets()
-	if err != nil {
-		log.Fatal(err)
-	}
+func createEnvironment() ag.Environnement {
+	return *ag.NewEnvironment(make([]ag.Agent, NumAgents))
+}
 
-	coliders := []image.Rectangle{}
-	for layerIdx, layer := range tilemapJSON.Layers {
-		
-		for i, tileID := range layer.Data {
+func loadMap() *carte.Carte {
+	tilemapImg := loadImage(AssetsPath + TilemapImage)
+	tilemapJSON := loadTilemapJSON(MapsPath + TilemapJSONFile)
+	tilesets := loadTilesets(tilemapJSON)
+	coliders := generateColliders(tilemapJSON, tilesets)
+	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders)
+}
 
+func createAgents(env ag.Environnement) []ag.Agent {
+	agentsImg := loadImage(AssetsPath + AgentImageFile)
+	agents := make([]ag.Agent, NumAgents)
 
-			if tileID == 0 {
-				continue	
-			}else if layerIdx != 0  {
-				x := i % layer.Width
-				y := i / layer.Width
-				
-				y *= 24
-				x *= 24
-				
-				img := tilesets[layerIdx].Img(tileID)
-
-				offsetY := -(img.Bounds().Dy() + 24)
-				y += offsetY
-
-				yy := img.Bounds().Dy()
-				xx := img.Bounds().Dx()
-
-				coliders = append(coliders, image.Rect(x, y, x + xx, y + yy))
-			}
-		}		
-	}
-
-
-	carte := carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders)
-
-	// Creation des agents
-	agentsImg, _, err := ebitenutil.NewImageFromFile("assets/images/ninja.png")
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-	}
-
-	
-	for i := 0; i < numAgents; i++ {
-
+	for i := 0; i < NumAgents; i++ {
 		agents[i] = ag.Agent{
 			Env:               &env,
 			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
 			Velocite:          rand.Float64(),
 			Acuite:            rand.Float64(),
-			Position:          ut.Position{X: rand.Float64(), Y: rand.Float64()},
+			Position:          ut.Position{X: 300, Y: 250},
 			Opinion:           rand.Float64(),
 			Charisme:          make(map[ag.IdAgent]float64),
 			Relation:          make(map[ag.IdAgent]float64),
@@ -115,103 +102,141 @@ func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
 		}
 		env.AddAgent(agents[i])
 	}
-	
-	return &Simulation{env: env, agents: agents, maxStep: maxStep, maxDuration: maxDuration, step: 0, start: time.Now(), carte: *carte}
+	return agents
+}
+
+func loadImage(path string) *ebiten.Image {
+	img, _, err := ebitenutil.NewImageFromFile(path)
+	if err != nil {
+		log.Fatalf("Failed to load image: %s, error: %v", path, err)
+	}
+	return img
+}
+
+func loadTilemapJSON(path string) *tile.TilemapJSON {
+	tilemap, err := tile.NewTilemapJSON(path)
+	if err != nil {
+		log.Fatalf("Failed to load tilemap JSON: %s, error: %v", path, err)
+	}
+	return tilemap
+}
+
+func loadTilesets(tilemapJSON *tile.TilemapJSON) []tile.Tileset {
+	tilesets, err := tilemapJSON.GenTilesets()
+	if err != nil {
+		log.Fatalf("Failed to generate tilesets, error: %v", err)
+	}
+	return tilesets
+}
+
+func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []image.Rectangle {
+	var coliders []image.Rectangle
+	for layerIdx, layer := range tilemapJSON.Layers {
+		for i, tileID := range layer.Data {
+			if tileID == 0 || layerIdx == 0 {
+				continue
+			}
+			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
+			img := tilesets[layerIdx].Img(tileID)
+			offsetY := -(img.Bounds().Dy() + TileSize)
+			y += offsetY
+			coliders = append(coliders, image.Rect(x, y, x+img.Bounds().Dx(), y+img.Bounds().Dy()))
+		}
+	}
+	return coliders
+}
+
+func (sim *Simulation) Draw(screen *ebiten.Image) {
+	// Fundo e agentes já desenhados
+	screen.Fill(color.RGBA{120, 180, 255, 255})
+	sim.drawMap(screen)
+	sim.drawAgents(screen)
+	sim.drawColliders(screen)
+
+	// Exibe atributos do agente selecionado
+	if sim.selected != nil {
+		// Desenha um retângulo para exibir informações
+		infoBoxX, infoBoxY := 10, 10
+		infoBoxWidth, infoBoxHeight := 200, 100
+		vector.StrokeRect(screen, float32(infoBoxX), float32(infoBoxY), float32(infoBoxWidth), float32(infoBoxHeight), 2, color.RGBA{0, 0, 0, 255}, true)
+
+		// Renderiza informações do agente selecionado
+		text := fmt.Sprintf("ID: %s\nType Agent: %s\nPos: (%.2f, %.2f)\nPersonalParameter: %.2f \nVivant: %t",
+			sim.selected.Id,
+			sim.selected.TypeAgt,
+			sim.selected.Position.X,
+			sim.selected.Position.Y,
+			sim.selected.PersonalParameter,
+			sim.selected.Vivant,
+		)
+
+		// Adiciona texto dentro do retângulo
+		ebitenutil.DebugPrintAt(screen, text, infoBoxX+10, infoBoxY+10)
+	}
 }
 
 
-func (g *Simulation) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{120, 180, 255, 255})
-
+func (sim *Simulation) drawMap(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
-
-	// draw the tilemap
-	for layerIdx, layer := range g.carte.TilemapJSON.Layers {
+	for layerIdx, layer := range sim.carte.TilemapJSON.Layers {
 		for i, tileID := range layer.Data {
 			if tileID == 0 {
 				continue
 			}
-			
-			x := i % layer.Width
-			y := i / layer.Width
-			
-			y *= 24
-			x *= 24
-
-
-			img := g.carte.Tilesets[layerIdx].Img(tileID)
-			
-			opts.GeoM.Translate(float64(x), float64(y))
-
-			opts.GeoM.Translate(0.0, -(float64(img.Bounds().Dy()) + 24.0))
-
-			screen.DrawImage(
-				img,
-				&opts,
-			)
-
+			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
+			img := sim.carte.Tilesets[layerIdx].Img(tileID)
+			opts.GeoM.Translate(float64(x), float64(y-img.Bounds().Dy()-TileSize))
+			screen.DrawImage(img, &opts)
 			opts.GeoM.Reset()
 		}
 	}
+}
 
-	// draw the agents
-	for _, agent := range g.agents {
+func (sim *Simulation) drawAgents(screen *ebiten.Image) {
+	opts := ebiten.DrawImageOptions{}
+	for _, agent := range sim.agents {
 		opts.GeoM.Translate(agent.Position.X, agent.Position.Y)
-		screen.DrawImage(
-			agent.Img.SubImage(
-				image.Rect(0, 0, 16, 16),
-			).(*ebiten.Image),
-			&opts,
-		)
-
+		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
+		screen.DrawImage(subImg, &opts)
 		opts.GeoM.Reset()
 	}
+}
 
-	//draw coliders
-	for _, colider := range g.carte.Coliders {
-		vector.StrokeRect(
-			screen, 
-			float32(colider.Min.X), 
-			float32(colider.Min.Y), 
-			float32(colider.Dx()), 
-			float32(colider.Dy()), 
-			float32(1.0),
-			color.RGBA{0, 0, 0, 0},true)
+func (sim *Simulation) drawColliders(screen *ebiten.Image) {
+	for _, colider := range sim.carte.Coliders {
+		vector.StrokeRect(screen, float32(colider.Min.X), float32(colider.Min.Y), float32(colider.Dx()), float32(colider.Dy()), 1.0, color.RGBA{0, 0, 0, 0}, true)
 	}
 }
 
-func (g *Simulation) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 320, 240
+func (sim *Simulation) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return WindowWidth, WindowHeight
 }
 
-func (sim *Simulation) Update() error {	
+func (sim *Simulation) Update() error {
+	// Posição do cursor
+	cursorX, cursorY := ebiten.CursorPosition()
+
+	// Detecta clique
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		for i := range sim.agents {
+			agent := &sim.agents[i]
+			// Verifica se o clique está dentro da área do agente
+			if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
+				cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
+				sim.selected = agent // Define o agente selecionado
+				break
+			}
+		}
+	}
+
 	return nil
 }
 
 
-
-
-func (sim *Simulation) Run(){
-
-	
+func (sim *Simulation) Run() {
 	for _, ag := range sim.agents {
-		ag.Start()
+		go ag.Start()
 	}
-	
 	sim.start = time.Now()
-
-	
-	for _, agent := range sim.agents {
-		go func(agent ag.Agent) {
-			step := 0
-			for {
-				step++
-				c , _ := sim.syncChans.Load(agent.Id)
-				c.(chan int) <- step
-				time.Sleep(1 * time.Millisecond)
-				<-c.(chan int)
-			}
-		}(agent)
-		time.Sleep(sim.maxDuration)
-	}	
+	time.Sleep(sim.maxDuration)
 }
