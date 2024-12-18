@@ -26,6 +26,7 @@ const (
 
 type IdAgent string
 
+
 type Agent struct {
 	Env               *Environnement
 	Id                IdAgent

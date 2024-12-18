@@ -21,9 +21,9 @@ import (
 const (
 	TileSize        = 24
 	AgentImageSize  = 16
-	WindowWidth     = 1200
-	WindowHeight    = 670
-	NumAgents       = 5
+	WindowWidth     = 1920
+	WindowHeight    = 1080
+	NumAgents       = 20
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
 	AgentImageFile  = "ninja.png"
@@ -49,7 +49,7 @@ func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
 	initializeWindow()
 	env := createEnvironment()
 	carte := loadMap()
-	agents := createAgents(env)
+	agents := createAgents(env,carte)
 
 	return &Simulation{
 		env:         env,
@@ -78,10 +78,39 @@ func loadMap() *carte.Carte {
 	coliders := generateColliders(tilemapJSON, tilesets)
 	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders)
 }
+func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
+    validPositions := []ut.Position{}
+    for layerIdx, layer := range carte.TilemapJSON.Layers {
+        for i, tileID := range layer.Data {
+			if tileID == 5 || tileID == 6 || tileID == 21 || tileID == 22 { // Assumindo que 0 representa um tile vazio
+                x := float64((i % layer.Width) * TileSize)
+                y := float64((i / layer.Width) * TileSize)
+				img := carte.Tilesets[layerIdx].Img(tileID)
+				offsetY := -(img.Bounds().Dy() + TileSize)
+				y += float64(offsetY)
 
-func createAgents(env ag.Environnement) []ag.Agent {
+                validPositions = append(validPositions, ut.Position{X: x, Y: y})
+            }
+        }
+    }
+    return validPositions
+}
+
+
+func createAgents(env ag.Environnement, carte *carte.Carte) []ag.Agent {
 	agentsImg := loadImage(AssetsPath + AgentImageFile)
 	agents := make([]ag.Agent, NumAgents)
+
+	validPositions := getValidSpawnPositions(carte, 1)
+
+	if len(validPositions) < NumAgents {
+        log.Fatalf("Not enough valid spawn positions for all agents")
+    }
+
+	rand.Shuffle(len(validPositions), func(i, j int) {
+        validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
+    })
+
 
 	for i := 0; i < NumAgents; i++ {
 		agents[i] = ag.Agent{
@@ -89,14 +118,14 @@ func createAgents(env ag.Environnement) []ag.Agent {
 			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
 			Velocite:          rand.Float64(),
 			Acuite:            rand.Float64(),
-			Position:          ut.Position{X: 300, Y: 250},
+			Position:          validPositions[i],
 			Opinion:           rand.Float64(),
 			Charisme:          make(map[ag.IdAgent]float64),
 			Relation:          make(map[ag.IdAgent]float64),
 			PersonalParameter: rand.Float64(),
 			Poid_rel:          []float64{rand.Float64(), rand.Float64()},
 			Vivant:            true,
-			TypeAgt:           ag.TypeAgent(rand.Intn(3)),
+			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
 			SyncChan:          make(chan int),
 			Img:               agentsImg,
 		}
@@ -233,7 +262,7 @@ func (sim *Simulation) Update() error {
 }
 
 
-func (sim *Simulation) Run() {
+func (sim *Simulation) Run() {	
 	for _, ag := range sim.agents {
 		go ag.Start()
 	}

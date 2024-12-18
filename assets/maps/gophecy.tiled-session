@@ -5,17 +5,17 @@
     },
     "activeFile": "spawn.json",
     "expandedProjectPaths": [
-        "tilesets",
-        "."
+        ".",
+        "tilesets"
     ],
     "file.lastUsedOpenFilter": "Todos os Ficheiros (*)",
     "fileStates": {
         "spawn.json": {
-            "scale": 0.75,
-            "selectedLayer": 1,
+            "scale": 0.5,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 584,
-                "y": 469.99999999999994
+                "x": 860,
+                "y": 462
             }
         },
         "tilesets/decoration.json": {
@@ -68,6 +68,7 @@
         "tilesets/img2.tsx",
         "tilesets/img.tsx"
     ],
+    "resizeMap.removeObjects": true,
     "tileset.lastUsedFormat": "json",
     "tileset.tileSize": {
         "height": 24,
