@@ -12,7 +12,8 @@ type Environnement struct {
 	Ags []Agent
 	//carte Carte
 	//agts []Objet
-	NbrAgents *sync.Map //key = typeAgent et value = int  -> Compteur d'agents par types
+	NbrAgents      *sync.Map //key = typeAgent et value = int  -> Compteur d'agents par types
+	AgentProximity *sync.Map //key = Agent.ID et value = []Agent -> Liste des agents proches
 }
 
 func NewEnvironment(ags []Agent) (env *Environnement) {
@@ -36,22 +37,24 @@ func (env *Environnement) AddAgent(ag Agent) {
 	}
 }
 
-func (env *Environnement) NearbyAgents() []Agent {
+// NearbyAgents calcule les agents proches de chaque agent
+func (env *Environnement) NearbyAgents() {
 	env.RLock()
 	defer env.RUnlock()
+	var nearbyAgents []Agent
 	for _, ag := range env.Ags {
+		pos := ag.AgtPosition()
+		var area ut.Rectangle
+		area.PositionDL.X = pos.X - ag.Acuite
+		area.PositionDL.Y = pos.Y + ag.Acuite
+		area.PositionUR.X = pos.X + ag.Acuite
+		area.PositionUR.Y = pos.Y - ag.Acuite
 
 		for _, ag2 := range env.Ags {
-			if ag.ID() != ag2.ID() {
-				pos2 := ag2.AgtPosition()
-				var area ut.Rectangle
-				area.PositionDL.X = pos2.X - ag2.Acuite
-				area.PositionDL.Y = pos2.Y + ag.Acuite
-				area.PositionUR.X = pos2.X + ag2.Acuite
-				area.PositionUR.Y = pos2.Y - ag2.Acuite
-
+			if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
+				nearbyAgents = append(nearbyAgents, ag2)
 			}
 		}
+		env.AgentProximity.Store(ag.Id, nearbyAgents)
 	}
-	return env.Ags
 }

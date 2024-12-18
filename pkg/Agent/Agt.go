@@ -86,8 +86,19 @@ func (ag *Agent) Start() {
 	}()
 }
 
-func (ag *Agent) Percept(env *Environnement) {
-	//ag.position=env.Position() TODO
+func (ag *Agent) Move() {
+	//TODO
+}
+
+func (ag *Agent) Percept(env *Environnement) (nearbyAgents []IdAgent) {
+
+	env.RLock()
+	defer env.RUnlock()
+
+	value, _ := env.AgentProximity.Load(ag.Id)
+	nearby := value.([]IdAgent)
+
+	return nearby
 }
 
 func (ag *Agent) Deliberate() {
