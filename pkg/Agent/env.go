@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	carte "Gophecy/pkg/Carte"
 	ut "Gophecy/pkg/Utilitaries"
 	"sync"
 )
@@ -10,29 +11,37 @@ var lsType = []TypeAgent{Sceptic, Believer, Neutral}
 type Environnement struct {
 	sync.RWMutex
 	Ags []Agent
-	//carte Carte
+	Carte carte.Carte
 	//agts []Objet
 	NbrAgents      *sync.Map //key = typeAgent et value = int  -> Compteur d'agents par types
 	AgentProximity *sync.Map //key = Agent.ID et value = []Agent -> Liste des agents proches
 }
 
-func NewEnvironment(ags []Agent) (env *Environnement) {
+func NewEnvironment(ags []Agent, carte carte.Carte) (env *Environnement) {
 	counter := &sync.Map{}
 
 	for _, val := range lsType {
 		counter.Store(val, 0)
 	}
 
-	return &Environnement{Ags: ags, NbrAgents: counter}
+	return &Environnement{Ags: ags, NbrAgents: counter, Carte: carte, AgentProximity: &sync.Map{}}
 }
 
 func (env *Environnement) AddAgent(ag Agent) {
 	env.Ags = append(env.Ags, ag)
-	nbr, err := env.NbrAgents.Load(ag.TypeAgt)
-	if !err {
-		nbr = nbr.(int) + 1
-		env.NbrAgents.Store(ag.TypeAgt, nbr)
+
+	// Charger le nombre actuel d'agents de ce type
+	value, exists := env.NbrAgents.Load(ag.TypeAgt)
+	if exists {
+		// Si la clé existe, convertir en int et incrémenter
+		if nbr, ok := value.(int); ok {
+			env.NbrAgents.Store(ag.TypeAgt, nbr+1)
+		} else {
+			// Si la valeur n'est pas un int, gérer l'erreur ou initialiser à 1
+			env.NbrAgents.Store(ag.TypeAgt, 1)
+		}
 	} else {
+		// Si la clé n'existe pas, initialiser à 1
 		env.NbrAgents.Store(ag.TypeAgt, 1)
 	}
 }

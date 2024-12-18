@@ -23,7 +23,7 @@ const (
 	AgentImageSize  = 16
 	WindowWidth     = 1920
 	WindowHeight    = 1080
-	NumAgents       = 20
+	NumAgents       = 200
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
 	AgentImageFile  = "ninja.png"
@@ -47,8 +47,8 @@ type Simulation struct {
 // NewSimulation initializes a new simulation
 func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
 	initializeWindow()
-	env := createEnvironment()
 	carte := loadMap()
+	env := createEnvironment(*carte)
 	agents := createAgents(env,carte)
 
 	return &Simulation{
@@ -67,8 +67,8 @@ func initializeWindow() {
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 }
 
-func createEnvironment() ag.Environnement {
-	return *ag.NewEnvironment(make([]ag.Agent, NumAgents))
+func createEnvironment(carte carte.Carte) ag.Environnement {
+	return *ag.NewEnvironment(make([]ag.Agent, NumAgents), carte)
 }
 
 func loadMap() *carte.Carte {
@@ -258,6 +258,9 @@ func (sim *Simulation) Update() error {
 		}
 	}
 
+	for _ , agent := range sim.agents {
+		agent.Move()
+	}
 	return nil
 }
 

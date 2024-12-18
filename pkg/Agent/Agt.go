@@ -45,6 +45,7 @@ type Agent struct {
 	TypeAgt           TypeAgent
 	SyncChan          chan int
 	Img               *ebiten.Image
+	MoveTimer 	      int  
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
@@ -59,10 +60,12 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		poid_rel = append(poid_rel, char)
 	}
 
+	
+
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SyncChan: syncChan, Img: img}
+		Vivant: true, TypeAgt: typeAgt, SyncChan: syncChan, Img: img, MoveTimer: 60}
 }
 
 func (ag *Agent) ID() IdAgent {
@@ -117,7 +120,17 @@ func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
 }
 
 func (ag *Agent) Move() {
-
+	if ag.MoveTimer > 0 {
+		
+		ag.MoveTimer-=1
+		if CheckCollisionHorizontal((ag.Position.X + ag.Position.Dx ),(ag.Position.Y + ag.Position.Dy),ag.Env.Carte.Coliders) || CheckCollisionVertical((ag.Position.X + ag.Position.Dx ),(ag.Position.Y + ag.Position.Dy),ag.Env.Carte.Coliders) {
+			return
+		}
+		ag.Position.X += ag.Position.Dx
+		ag.Position.Y += ag.Position.Dy
+		return
+		
+	}
 	randIdx := 0
 	collision := true
 	right := ut.UniqueDirection{Dx: ut.Maxspeed, Dy: 0}
@@ -132,21 +145,18 @@ func (ag *Agent) Move() {
 		randIdx = rand.Intn(len(directions))
 		tryX := ag.Position.X + directions[randIdx].Dx
 		tryY := ag.Position.Y + directions[randIdx].Dy
-		/*
-			waiting for the Carte to be implemented
-
-			if !CheckCollisionHorizontal(tryX,tryY,ag.Env.Carte.Coliders) && !CheckCollisionVertical(tryX,tryY,ag.Env.Carte.Coliders) {
-				collision = false
-			}
-
-		*/
+		if !CheckCollisionHorizontal(tryX,tryY,ag.Env.Carte.Coliders) && !CheckCollisionVertical(tryX,tryY,ag.Env.Carte.Coliders) {
+			collision = false
+		}
 	}
 
 	ag.Position.Dx = directions[randIdx].Dx
 	ag.Position.Dy = directions[randIdx].Dy
 
-	ag.Position.X += ag.Position.Dx
-	ag.Position.Y += ag.Position.Dy
+	
+
+	ag.MoveTimer=60
+	
 }
 
 func (ag *Agent) Percept(env *Environnement) (nearbyAgents []IdAgent) {
