@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	ut "Gophecy/pkg/Utilitaries"
 	"sync"
 )
 
@@ -8,10 +9,11 @@ var lsType = []TypeAgent{Sceptic, Believer, Neutral}
 
 type Environnement struct {
 	sync.RWMutex
-	ags []Agent
+	Ags []Agent
 	//carte Carte
 	//agts []Objet
-	nbrAgents *sync.Map //key = typeAgent et value = int  -> Compteur d'agents par types
+	NbrAgents      *sync.Map //key = typeAgent et value = int  -> Compteur d'agents par types
+	AgentProximity *sync.Map //key = Agent.ID et value = []Agent -> Liste des agents proches
 }
 
 func NewEnvironment(ags []Agent) (env *Environnement) {
@@ -21,25 +23,38 @@ func NewEnvironment(ags []Agent) (env *Environnement) {
 		counter.Store(val, 0)
 	}
 
-	return &Environnement{ags: ags, nbrAgents: counter}
+	return &Environnement{Ags: ags, NbrAgents: counter}
 }
 
 func (env *Environnement) AddAgent(ag Agent) {
-	env.ags = append(env.ags, ag)
-
-	// Charger le nombre actuel d'agents de ce type
-	value, exists := env.nbrAgents.Load(ag.TypeAgt)
-	if exists {
-		// Si la clé existe, convertir en int et incrémenter
-		if nbr, ok := value.(int); ok {
-			env.nbrAgents.Store(ag.TypeAgt, nbr+1)
-		} else {
-			// Si la valeur n'est pas un int, gérer l'erreur ou initialiser à 1
-			env.nbrAgents.Store(ag.TypeAgt, 1)
-		}
+	env.Ags = append(env.Ags, ag)
+	nbr, err := env.NbrAgents.Load(ag.TypeAgt)
+	if !err {
+		nbr = nbr.(int) + 1
+		env.NbrAgents.Store(ag.TypeAgt, nbr)
 	} else {
-		// Si la clé n'existe pas, initialiser à 1
-		env.nbrAgents.Store(ag.TypeAgt, 1)
+		env.NbrAgents.Store(ag.TypeAgt, 1)
 	}
 }
 
+// NearbyAgents calcule les agents proches de chaque agent
+func (env *Environnement) NearbyAgents() {
+	env.Lock()
+	defer env.Unlock()
+	var nearbyAgents []Agent
+	for _, ag := range env.Ags {
+		pos := ag.AgtPosition()
+		var area ut.Rectangle
+		area.PositionDL.X = pos.X - ag.Acuite
+		area.PositionDL.Y = pos.Y + ag.Acuite
+		area.PositionUR.X = pos.X + ag.Acuite
+		area.PositionUR.Y = pos.Y - ag.Acuite
+
+		for _, ag2 := range env.Ags {
+			if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
+				nearbyAgents = append(nearbyAgents, ag2)
+			}
+		}
+		env.AgentProximity.Store(ag.Id, nearbyAgents)
+	}
+}

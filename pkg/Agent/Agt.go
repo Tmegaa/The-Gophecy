@@ -4,6 +4,10 @@ import (
 	ut "Gophecy/pkg/Utilitaries"
 	"log"
 
+	"math/rand"
+
+	"image"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -26,7 +30,6 @@ const (
 
 type IdAgent string
 
-
 type Agent struct {
 	Env               *Environnement
 	Id                IdAgent
@@ -46,7 +49,7 @@ type Agent struct {
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
 	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64,
-	agent InterfaceAgent, typeAgt TypeAgent, syncChan chan int, img *ebiten.Image ) *Agent {
+	agent InterfaceAgent, typeAgt TypeAgent, syncChan chan int, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatif pour chaque agents
 	poid_rel := make([]float64, 0)
@@ -62,6 +65,13 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		Vivant: true, TypeAgt: typeAgt, SyncChan: syncChan, Img: img}
 }
 
+func (ag *Agent) ID() IdAgent {
+	return ag.Id
+}
+
+func (ag *Agent) AgtPosition() ut.Position {
+	return ag.Position
+}
 
 func (ag *Agent) Start() {
 	log.Printf("%s lancement...\n", ag.Id)
@@ -80,12 +90,83 @@ func (ag *Agent) Start() {
 	}()
 }
 
-func (ag *Agent) Percept(env *Environnement) {
-	//ag.position=env.Position() TODO
+func CheckCollisionHorizontal(x, y float64, coliders []image.Rectangle) bool {
+	for _, colider := range coliders {
+		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
+			if x > 0 {
+				return true
+			} else if x < 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
+	for _, colider := range coliders {
+		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
+			if y > 0 {
+				return true
+			} else if y < 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (ag *Agent) Move() {
+
+	randIdx := 0
+	collision := true
+	right := ut.UniqueDirection{Dx: ut.Maxspeed, Dy: 0}
+	left := ut.UniqueDirection{Dx: -ut.Maxspeed, Dy: 0}
+	down := ut.UniqueDirection{Dx: 0, Dy: ut.Maxspeed}
+	up := ut.UniqueDirection{Dx: 0, Dy: -ut.Maxspeed}
+
+	directions := []ut.UniqueDirection{right, left, down, up}
+
+	for collision {
+
+		randIdx = rand.Intn(len(directions))
+		tryX := ag.Position.X + directions[randIdx].Dx
+		tryY := ag.Position.Y + directions[randIdx].Dy
+		/*
+			waiting for the Carte to be implemented
+
+			if !CheckCollisionHorizontal(tryX,tryY,ag.Env.Carte.Coliders) && !CheckCollisionVertical(tryX,tryY,ag.Env.Carte.Coliders) {
+				collision = false
+			}
+
+		*/
+	}
+
+	ag.Position.Dx = directions[randIdx].Dx
+	ag.Position.Dy = directions[randIdx].Dy
+
+	ag.Position.X += ag.Position.Dx
+	ag.Position.Y += ag.Position.Dy
+}
+
+func (ag *Agent) Percept(env *Environnement) (nearbyAgents []IdAgent) {
+
+	env.RLock()
+	defer env.RUnlock()
+
+	value, _ := env.AgentProximity.Load(ag.Id)
+	nearby := value.([]IdAgent)
+
+	return nearby
 }
 
 func (ag *Agent) Deliberate() {
 	//TODO
+
+	/*
+
+
+	 */
 }
 
 func (ag *Agent) Act(env *Environnement) {
