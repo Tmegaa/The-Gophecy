@@ -23,7 +23,7 @@ const (
 	AgentImageSize  = 16
 	WindowWidth     = 1920
 	WindowHeight    = 1080
-	NumAgents       = 200
+	NumAgents       = 50
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
 	AgentImageFile  = "ninja.png"
@@ -258,8 +258,8 @@ func (sim *Simulation) Update() error {
 		}
 	}
 
-	for _ , agent := range sim.agents {
-		agent.Move()
+	for idx, _ := range sim.agents {
+		sim.agents[idx].Move()
 	}
 	return nil
 }
