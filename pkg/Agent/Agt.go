@@ -4,6 +4,10 @@ import (
 	ut "Gophecy/pkg/Utilitaries"
 	"log"
 
+	"math/rand"
+
+	"image"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -86,8 +90,61 @@ func (ag *Agent) Start() {
 	}()
 }
 
+func CheckCollisionHorizontal(x, y float64, coliders []image.Rectangle) bool {
+	for _, colider := range coliders {
+		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
+			if x > 0 {
+				return true
+			} else if x < 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
+	for _, colider := range coliders {
+		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
+			if y > 0 {
+				return true
+			} else if y < 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (ag *Agent) Move() {
-	//TODO
+
+	randIdx := 0
+	collision := true
+	right := ut.UniqueDirection{Dx: ut.Maxspeed, Dy: 0}
+	left := ut.UniqueDirection{Dx: -ut.Maxspeed, Dy: 0}
+	down := ut.UniqueDirection{Dx: 0, Dy: ut.Maxspeed}
+	up := ut.UniqueDirection{Dx: 0, Dy: -ut.Maxspeed}
+
+	directions := []ut.UniqueDirection{right, left, down, up}
+
+	for collision {
+
+		randIdx = rand.Intn(len(directions))
+		tryX := ag.Position.X + directions[randIdx].Dx
+		tryY := ag.Position.Y + directions[randIdx].Dy
+		/*
+			if !CheckCollisionHorizontal(tryX,tryY,ag.Env.Carte.Coliders) && !CheckCollisionVertical(tryX,tryY,ag.Env.Carte.Coliders) {
+				collision = false
+			}
+
+		*/
+	}
+
+	ag.Position.Dx = directions[randIdx].Dx
+	ag.Position.Dy = directions[randIdx].Dy
+
+	ag.Position.X += ag.Position.Dx
+	ag.Position.Y += ag.Position.Dy
 }
 
 func (ag *Agent) Percept(env *Environnement) (nearbyAgents []IdAgent) {
@@ -103,6 +160,11 @@ func (ag *Agent) Percept(env *Environnement) (nearbyAgents []IdAgent) {
 
 func (ag *Agent) Deliberate() {
 	//TODO
+
+	/*
+
+
+	 */
 }
 
 func (ag *Agent) Act(env *Environnement) {

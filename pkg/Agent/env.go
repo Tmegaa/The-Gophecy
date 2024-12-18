@@ -39,8 +39,8 @@ func (env *Environnement) AddAgent(ag Agent) {
 
 // NearbyAgents calcule les agents proches de chaque agent
 func (env *Environnement) NearbyAgents() {
-	env.RLock()
-	defer env.RUnlock()
+	env.Lock()
+	defer env.Unlock()
 	var nearbyAgents []Agent
 	for _, ag := range env.Ags {
 		pos := ag.AgtPosition()
