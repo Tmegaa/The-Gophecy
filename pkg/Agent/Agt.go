@@ -189,7 +189,7 @@ func (ag *Agent) SetAction(action string) {
 }
 
 func (ag *Agent) ClearAction() {
-    ag.CurrentAction = ""
+    ag.CurrentAction = "Running"
     ag.DialogTimer = 0
 }
 

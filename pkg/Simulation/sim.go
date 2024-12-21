@@ -135,11 +135,15 @@ func createAgents(env ag.Environnement, carte *carte.Carte, NumAgents int) []ag.
         validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
     })
 
+
+
 	// for i := 0; i < NumAgents; i++ {
 	// 	agents[i] = *ag.NewAgent(&env, ag.IdAgent(fmt.Sprintf("Agent%d", i)), rand.Float64(), rand.Float64(), validPositions[i], rand.Float64(), make(map[ag.IdAgent]float64), make(map[ag.IdAgent]float64), rand.Float64(), []float64{rand.Float64(), rand.Float64()}, []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)], make(chan int), agentsImg)
 	// 	env.AddAgent(agents[i])
 	// }
 
+
+	//i dont why we are creating agents like this and not using the function NewAgent
 	for i := 0; i < NumAgents; i++ {
 		agents[i] = ag.Agent{
 			Env:               &env,
@@ -249,7 +253,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
     if sim.selected != nil {
         ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
         y += 20
-        agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s",
+        agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d",
             sim.selected.Id,
             sim.selected.TypeAgt,
             sim.selected.Position.X,
@@ -258,6 +262,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
             sim.selected.Vivant,
 			sim.selected.DialogTimer,
 			sim.selected.CurrentAction,
+			sim.selected.MoveTimer,
 		)
         ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
     }
