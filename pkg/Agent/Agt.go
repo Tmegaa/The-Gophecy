@@ -45,12 +45,13 @@ type Agent struct {
 	TypeAgt           TypeAgent
 	SyncChan          chan int
 	Img               *ebiten.Image
-	MoveTimer 	      int  
+	MoveTimer 	      int
+	CurrentAction     string
+    DialogTimer       int
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
-	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64,
-	agent InterfaceAgent, typeAgt TypeAgent, syncChan chan int, img *ebiten.Image) *Agent {
+	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, typeAgt TypeAgent, syncChan chan int, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatif pour chaque agents
 	poid_rel := make([]float64, 0)
@@ -60,12 +61,10 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		poid_rel = append(poid_rel, char)
 	}
 
-	
-
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SyncChan: syncChan, Img: img, MoveTimer: 60}
+		Vivant: true, TypeAgt: typeAgt, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 180}
 }
 
 func (ag *Agent) ID() IdAgent {
@@ -120,6 +119,7 @@ func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
 }
 
 func (ag *Agent) Move() {
+	ag.ClearAction()
 	if ag.MoveTimer > 0 {
 		
 		ag.MoveTimer-=1
@@ -181,4 +181,22 @@ func (ag *Agent) Deliberate() {
 
 func (ag *Agent) Act(env *Environnement) {
 	//TODO
+}
+
+func (ag *Agent) SetAction(action string) {
+    ag.CurrentAction = action
+    ag.DialogTimer = 180 // 2 segundos a 60 FPS
+}
+
+func (ag *Agent) ClearAction() {
+    ag.CurrentAction = ""
+    ag.DialogTimer = 0
+}
+
+func (ag *Agent) Pray() {
+    ag.SetAction("Praying")
+}
+
+func (ag *Agent) Eat() {
+    ag.SetAction("Eating")
 }

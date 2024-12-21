@@ -5,6 +5,7 @@ import (
 	carte "Gophecy/pkg/Carte"
 	tile "Gophecy/pkg/Tile"
 	ut "Gophecy/pkg/Utilitaries"
+	"context"
 	"fmt"
 	"image"
 	"image/color"
@@ -13,9 +14,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/freetype/truetype"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/text"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/gofont/goregular"
 )
 
 const (
@@ -42,6 +47,10 @@ type Simulation struct {
 	syncChans   sync.Map
 	carte       carte.Carte
 	selected    *ag.Agent
+	ctx         context.Context
+    cancel      context.CancelFunc
+	dialogFont font.Face
+
 }
 
 // NewSimulation initializes a new simulation
@@ -52,6 +61,12 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	carte := loadMap()
 	env := createEnvironment(*carte)
 	agents := createAgents(env, carte, config.NumAgents)
+	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
+	tt, err := truetype.Parse(goregular.TTF)
+    if err != nil {
+        log.Fatal(err)
+    }
+
 
 	return &Simulation{
 		env:         env,
@@ -60,6 +75,12 @@ func NewSimulation(config SimulationConfig) *Simulation {
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
 		carte:       *carte,
+		ctx:         ctx,
+        cancel:      cancel,
+		dialogFont:  truetype.NewFace(tt, &truetype.Options{
+			Size: 12,
+			DPI:  72,
+		}),
 	}
 }
 
@@ -114,6 +135,10 @@ func createAgents(env ag.Environnement, carte *carte.Carte, NumAgents int) []ag.
         validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
     })
 
+	// for i := 0; i < NumAgents; i++ {
+	// 	agents[i] = *ag.NewAgent(&env, ag.IdAgent(fmt.Sprintf("Agent%d", i)), rand.Float64(), rand.Float64(), validPositions[i], rand.Float64(), make(map[ag.IdAgent]float64), make(map[ag.IdAgent]float64), rand.Float64(), []float64{rand.Float64(), rand.Float64()}, []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)], make(chan int), agentsImg)
+	// 	env.AddAgent(agents[i])
+	// }
 
 	for i := 0; i < NumAgents; i++ {
 		agents[i] = ag.Agent{
@@ -131,6 +156,9 @@ func createAgents(env ag.Environnement, carte *carte.Carte, NumAgents int) []ag.
 			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
 			SyncChan:          make(chan int),
 			Img:               agentsImg,
+			MoveTimer:         60,
+			CurrentAction:     "Praying",
+			DialogTimer:       400,
 		}
 		env.AddAgent(agents[i])
 	}
@@ -202,7 +230,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 
     // Informações da simulação
     elapsed := time.Since(sim.start)
-    simInfo := fmt.Sprintf("Step: %d\nElapsed: %s", sim.step, elapsed.Round(time.Second))
+    simInfo := fmt.Sprintf("Elapsed: %s",elapsed.Round(time.Second))
     ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
     y += 40
 
@@ -221,13 +249,16 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
     if sim.selected != nil {
         ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
         y += 20
-        agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t",
+        agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s",
             sim.selected.Id,
             sim.selected.TypeAgt,
             sim.selected.Position.X,
             sim.selected.Position.Y,
             sim.selected.PersonalParameter,
-            sim.selected.Vivant)
+            sim.selected.Vivant,
+			sim.selected.DialogTimer,
+			sim.selected.CurrentAction,
+		)
         ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
     }
 }
@@ -257,8 +288,31 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
 		screen.DrawImage(subImg, &opts)
 		opts.GeoM.Reset()
+
+		sim.drawDialogBox(screen, agent)
 	}
 }
+
+func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
+    if agent.CurrentAction == "" || agent.DialogTimer <= 0 {
+        return
+    }
+
+    dialogWidth := 100
+    dialogHeight := 30
+    x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
+    y := int(agent.Position.Y) - dialogHeight - 5
+
+    // Desenha o fundo da caixa de diálogo
+    vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), color.RGBA{255, 255, 255, 200}, false)
+
+    // Desenha a borda da caixa de diálogo
+    vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
+
+    // Escreve o texto da ação
+    text.Draw(screen, agent.CurrentAction, sim.dialogFont, x+5, y+20, color.Black)
+}
+
 
 func (sim *Simulation) drawColliders(screen *ebiten.Image) {
 	for _, colider := range sim.carte.Coliders {
@@ -271,40 +325,77 @@ func (sim *Simulation) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (sim *Simulation) Update() error {
-	// Posição do cursor
-	cursorX, cursorY := ebiten.CursorPosition()
+	select {
+    case <-sim.ctx.Done():
+        return ebiten.Termination
+		default:
+		// Posição do cursor
+		cursorX, cursorY := ebiten.CursorPosition()
 
-	// Detecta clique
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-		for i := range sim.agents {
-			agent := &sim.agents[i]
-			// Verifica se o clique está dentro da área do agente
-			if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
-				cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
-				sim.selected = agent // Define o agente selecionado
-				break
+		// Detecta clique
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			for i := range sim.agents {
+				agent := &sim.agents[i]
+				// Verifica se o clique está dentro da área do agente
+				if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
+					cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
+					sim.selected = agent // Define o agente selecionado
+					break
+				}
 			}
 		}
-	}
 
-	for idx, _ := range sim.agents {
-		sim.agents[idx].Move()
+		for i := range sim.agents {
+			if sim.agents[i].DialogTimer > 0 {
+				sim.agents[i].DialogTimer--
+				if sim.agents[i].DialogTimer == 0 {
+					sim.agents[i].ClearAction()
+				}
+			}else {
+			sim.agents[i].Move() // Ou qualquer outra lógica de atualização do agente
+			}
+		}
 	}
 	return nil
 }
 
 
 func (sim *Simulation) Run() error {
+    defer sim.cancel() // Ensure context is canceled when Run() exits
+
     go func() {
         for _, ag := range sim.agents {
             go ag.Start()
         }
         sim.start = time.Now()
-        time.Sleep(sim.maxDuration)
     }()
 
-    if err := ebiten.RunGame(sim); err != nil {
+    if err := ebiten.RunGame(sim); err != nil && err != ebiten.Termination{
         return err
     }
+    // Affichages de finalisation
+	fmt.Println("\n--- Simulation Terminée ---")
+	fmt.Printf("Durée totale : %s\n", time.Since(sim.start).Round(time.Second))
+
+	// Comptage des agents par type
+	agentCounts := make(map[ag.TypeAgent]int)
+	for _, agent := range sim.agents {
+		agentCounts[agent.TypeAgt]++
+	}
+	fmt.Println("\nNombre final d'agents par type :")
+	for agentType, count := range agentCounts {
+		fmt.Printf("- %s : %d\n", agentType, count)
+	}
+
+	// Statistiques supplémentaires
+	totalOpinion := 0.0
+	for _, agent := range sim.agents {
+		totalOpinion += agent.Opinion
+	}
+	averageOpinion := totalOpinion / float64(len(sim.agents))
+	fmt.Printf("\nOpinion moyenne des agents : %.2f\n", averageOpinion)
+
 	return nil
+
 }
+
