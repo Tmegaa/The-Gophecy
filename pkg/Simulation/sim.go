@@ -23,7 +23,7 @@ const (
 	AgentImageSize  = 16
 	WindowWidth     = 1920
 	WindowHeight    = 1080
-	NumAgents       = 50
+	NumAgents       = 5
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
 	AgentImageFile  = "ninja.png"
@@ -45,21 +45,24 @@ type Simulation struct {
 }
 
 // NewSimulation initializes a new simulation
-func NewSimulation(maxStep int, maxDuration time.Duration) *Simulation {
+// pkg/Simulation/simulation.go
+
+func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
 	env := createEnvironment(*carte)
-	agents := createAgents(env,carte)
+	agents := createAgents(env, carte, config.NumAgents)
 
 	return &Simulation{
 		env:         env,
 		agents:      agents,
-		maxStep:     maxStep,
-		maxDuration: maxDuration,
+		maxStep:     1000, // Você pode adicionar isso à configuração se desejar
+		maxDuration: config.SimulationTime,
 		start:       time.Now(),
 		carte:       *carte,
 	}
 }
+
 
 func initializeWindow() {
 	ebiten.SetWindowSize(WindowWidth, WindowHeight)
@@ -97,7 +100,7 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 }
 
 
-func createAgents(env ag.Environnement, carte *carte.Carte) []ag.Agent {
+func createAgents(env ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
 	agentsImg := loadImage(AssetsPath + AgentImageFile)
 	agents := make([]ag.Agent, NumAgents)
 
@@ -176,33 +179,59 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 }
 
 func (sim *Simulation) Draw(screen *ebiten.Image) {
-	// Fundo e agentes já desenhados
-	screen.Fill(color.RGBA{120, 180, 255, 255})
-	sim.drawMap(screen)
-	sim.drawAgents(screen)
-	sim.drawColliders(screen)
-
-	// Exibe atributos do agente selecionado
-	if sim.selected != nil {
-		// Desenha um retângulo para exibir informações
-		infoBoxX, infoBoxY := 10, 10
-		infoBoxWidth, infoBoxHeight := 200, 100
-		vector.StrokeRect(screen, float32(infoBoxX), float32(infoBoxY), float32(infoBoxWidth), float32(infoBoxHeight), 2, color.RGBA{0, 0, 0, 255}, true)
-
-		// Renderiza informações do agente selecionado
-		text := fmt.Sprintf("ID: %s\nType Agent: %s\nPos: (%.2f, %.2f)\nPersonalParameter: %.2f \nVivant: %t",
-			sim.selected.Id,
-			sim.selected.TypeAgt,
-			sim.selected.Position.X,
-			sim.selected.Position.Y,
-			sim.selected.PersonalParameter,
-			sim.selected.Vivant,
-		)
-
-		// Adiciona texto dentro do retângulo
-		ebitenutil.DebugPrintAt(screen, text, infoBoxX+10, infoBoxY+10)
-	}
+    // Desenha o fundo e os agentesrgba(57,61,125,255)
+    screen.Fill(color.RGBA{57,61,125,255})
+    sim.drawMap(screen)
+    sim.drawAgents(screen)
+    sim.drawColliders(screen)
+    sim.drawInfoPanel(screen)
 }
+
+func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
+    panelX, panelY := 0, 0
+    panelWidth, panelHeight := 240, WindowHeight - 20
+    padding := 10
+
+    // Desenha o painel de fundo
+    vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
+    
+    // Título do painel
+    ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
+    
+    y := panelY + 30
+
+    // Informações da simulação
+    elapsed := time.Since(sim.start)
+    simInfo := fmt.Sprintf("Step: %d\nElapsed: %s", sim.step, elapsed.Round(time.Second))
+    ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
+    y += 40
+
+    // Contagem de agentes por tipo
+    ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
+    y += 20
+    agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
+    for _, agentType := range agentTypes {
+        count, _ := sim.env.NbrAgents.Load(agentType)
+        ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", agentType, count), panelX+padding, y)
+        y += 20
+    }
+    y += 20
+
+    // Informações do agente selecionado
+    if sim.selected != nil {
+        ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
+        y += 20
+        agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t",
+            sim.selected.Id,
+            sim.selected.TypeAgt,
+            sim.selected.Position.X,
+            sim.selected.Position.Y,
+            sim.selected.PersonalParameter,
+            sim.selected.Vivant)
+        ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
+    }
+}
+
 
 
 func (sim *Simulation) drawMap(screen *ebiten.Image) {
@@ -265,10 +294,17 @@ func (sim *Simulation) Update() error {
 }
 
 
-func (sim *Simulation) Run() {	
-	for _, ag := range sim.agents {
-		go ag.Start()
-	}
-	sim.start = time.Now()
-	time.Sleep(sim.maxDuration)
+func (sim *Simulation) Run() error {
+    go func() {
+        for _, ag := range sim.agents {
+            go ag.Start()
+        }
+        sim.start = time.Now()
+        time.Sleep(sim.maxDuration)
+    }()
+
+    if err := ebiten.RunGame(sim); err != nil {
+        return err
+    }
+	return nil
 }

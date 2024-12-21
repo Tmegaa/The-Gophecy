@@ -3,21 +3,14 @@ package main
 import (
 	sim "Gophecy/pkg/Simulation"
 	"log"
-	"time"
-
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
-
 func main() {
+	config := sim.ShowMenu()
 	
-	simulation := sim.NewSimulation(
-		1000,
-		time.Hour,
-	)
+	simulation := sim.NewSimulation(config)
 
-	if err := ebiten.RunGame(simulation); err != nil {
-		log.Fatal(err)
+	if err := simulation.Run(); err != nil {
+		log.Fatalf("Simulation failed: %v", err)
 	}
 }
-

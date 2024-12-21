@@ -12,9 +12,9 @@
     "fileStates": {
         "spawn.json": {
             "scale": 0.5,
-            "selectedLayer": 0,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 860,
+                "x": 859,
                 "y": 462
             }
         },
