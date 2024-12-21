@@ -11,17 +11,18 @@ import (
 type SimulationConfig struct {
 	NumAgents       int
 	SimulationTime  time.Duration
-	// Adicione outros hiperparâmetros aqui
+	
 }
 
 func ShowMenu() SimulationConfig {
 	config := SimulationConfig{}
 
-	fmt.Println("Bem-vindo à Simulação Gophecy!")
-	
-	config.NumAgents = getIntInput("Número de agentes")
-	durationMinutes := getIntInput("Duração da simulação (em minutos)")
+	fmt.Println("Bienvenue dans la Simulation Gophecy!")
+
+	config.NumAgents = getIntInput("Nombre d'agents")
+	durationMinutes := getIntInput("Durée de la simulation (en minutes)")
 	config.SimulationTime = time.Duration(durationMinutes) * time.Minute
+
 	
 	// Adicione mais opções de configuração aqui
 
