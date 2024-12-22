@@ -10,11 +10,11 @@ var lsType = []TypeAgent{Sceptic, Believer, Neutral}
 
 type Environnement struct {
 	sync.RWMutex
-	Ags []Agent
+	Ags   []Agent
 	Carte carte.Carte
 	//agts []Objet
 	NbrAgents      *sync.Map //key = typeAgent et value = int  -> Compteur d'agents par types
-	AgentProximity *sync.Map //key = Agent.ID et value = []Agent -> Liste des agents proches
+	AgentProximity *sync.Map //key = IDAgent et value = []Agent -> Liste des agents proches
 }
 
 func NewEnvironment(ags []Agent, carte carte.Carte) (env *Environnement) {
@@ -50,8 +50,8 @@ func (env *Environnement) AddAgent(ag Agent) {
 func (env *Environnement) NearbyAgents() {
 	env.Lock()
 	defer env.Unlock()
-	var nearbyAgents []Agent
 	for _, ag := range env.Ags {
+		var nearbyAgents []*Agent
 		pos := ag.AgtPosition()
 		var area ut.Rectangle
 		area.PositionDL.X = pos.X - ag.Acuite
@@ -61,7 +61,7 @@ func (env *Environnement) NearbyAgents() {
 
 		for _, ag2 := range env.Ags {
 			if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
-				nearbyAgents = append(nearbyAgents, ag2)
+				nearbyAgents = append(nearbyAgents, &ag2)
 			}
 		}
 		env.AgentProximity.Store(ag.Id, nearbyAgents)
