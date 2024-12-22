@@ -8,7 +8,7 @@
  "margin":0,
  "name":"obj",
  "spacing":0,
- "tilecount":21,
+ "tilecount":27,
  "tiledversion":"1.11.0",
  "tileheight":144,
  "tiles":[
@@ -137,6 +137,42 @@
          "image":"..\/..\/objects\/map (29).png",
          "imageheight":36,
          "imagewidth":27
+        }, 
+        {
+         "id":21,
+         "image":"..\/..\/objects\/map (30).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":22,
+         "image":"..\/..\/objects\/map (31).png",
+         "imageheight":24,
+         "imagewidth":24
+        }, 
+        {
+         "id":23,
+         "image":"..\/..\/objects\/map (32).png",
+         "imageheight":48,
+         "imagewidth":48
+        }, 
+        {
+         "id":24,
+         "image":"..\/..\/objects\/map (33).png",
+         "imageheight":39,
+         "imagewidth":34
+        }, 
+        {
+         "id":25,
+         "image":"..\/..\/objects\/map (34).png",
+         "imageheight":48,
+         "imagewidth":48
+        }, 
+        {
+         "id":26,
+         "image":"..\/..\/objects\/map (35).png",
+         "imageheight":41,
+         "imagewidth":35
         }],
  "tilewidth":97,
  "type":"tileset",

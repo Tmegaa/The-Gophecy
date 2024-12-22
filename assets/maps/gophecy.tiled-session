@@ -11,11 +11,11 @@
     "file.lastUsedOpenFilter": "Todos os Ficheiros (*)",
     "fileStates": {
         "spawn.json": {
-            "scale": 0.5,
+            "scale": 0.75,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 859,
-                "y": 462
+                "x": 1124,
+                "y": 576
             }
         },
         "tilesets/decoration.json": {
