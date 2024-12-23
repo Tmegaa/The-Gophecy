@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "spawn.json",
+    "activeFile": "tilesets/obj.json",
     "expandedProjectPaths": [
         ".",
         "tilesets"
@@ -11,11 +11,11 @@
     "file.lastUsedOpenFilter": "Todos os Ficheiros (*)",
     "fileStates": {
         "spawn.json": {
-            "scale": 0.75,
+            "scale": 2,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 1124,
-                "y": 576
+                "x": 537.5,
+                "y": 260.5
             }
         },
         "tilesets/decoration.json": {
@@ -61,9 +61,9 @@
     ],
     "project": "gophecy.tiled-project",
     "recentFiles": [
-        "tilesets/obj.json",
-        "tilesets/img.json",
         "spawn.json",
+        "tilesets/img.json",
+        "tilesets/obj.json",
         "tilesets/decoration.json",
         "tilesets/img2.tsx",
         "tilesets/img.tsx"
