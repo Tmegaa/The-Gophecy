@@ -73,7 +73,7 @@ func (env *Environnement) NearbyObjects() {
 	env.Lock()
 	defer env.Unlock()
 	for _, ag := range env.Ags {
-		var nearbyObjects []InterfaceObjet
+		var nearbyObjects []*InterfaceObjet
 		pos := ag.AgtPosition()
 		var area ut.Rectangle
 		area.PositionDL.X = pos.X - ag.Acuite
@@ -83,7 +83,7 @@ func (env *Environnement) NearbyObjects() {
 
 		for _, obj := range env.Objs {
 			if ut.IsInRectangle(obj.ObjPosition(), area) {
-				nearbyObjects = append(nearbyObjects, obj)
+				nearbyObjects = append(nearbyObjects, &obj)
 			}
 		}
 		env.ObjectProximity.Store(ag.Id, nearbyObjects)

@@ -2,6 +2,7 @@ package pkg
 
 import (
 	ut "Gophecy/pkg/Utilitaries"
+	"fmt"
 	"log"
 
 	"math/rand"
@@ -95,6 +96,7 @@ func (ag *Agent) Start() {
 			step = <-ag.SyncChan
 			nearby := ag.Percept(env)
 			choice := ag.Deliberate(env, nearby)
+			fmt.Println(ag.Id, choice)
 			ag.Act(env, choice)
 
 			ag.SyncChan <- step
@@ -199,13 +201,12 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent) string {
 		return "Move"
 	}
 	//TODO FONCTION SET PRIORITY
-	priority := ag.SetPriority(nearbyAgents)
-
+	//priority := ag.SetPriority(nearbyAgents)
+	priority := nearbyAgents //for testing
 	for _, ag2 := range priority {
 		if !ag2.Occupied {
 			//si l'agent est du même type
 			if ag.TypeAgt == ag2.TypeAgt {
-				//&& ag.Opinion != 0 && ag2.Opinion != 0
 				switch {
 				case ag.TypeAgt == Sceptic:
 					if ag.Opinion == 0 && ag2.Opinion == 0 {

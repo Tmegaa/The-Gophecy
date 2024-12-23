@@ -2,6 +2,8 @@ package pkg
 
 import (
 	ut "Gophecy/pkg/Utilitaries"
+
+	"github.com/hajimehoshi/ebiten/v2" // Ebiten
 )
 
 type InterfaceObjet interface {
@@ -22,9 +24,9 @@ type Computer struct {
 	Env      *Environnement
 	Id       IdObjet
 	Position ut.Position
-	Programm string
-	//Img     *ebiten.Image
-	Used bool
+	Programm Programm
+	Img      *ebiten.Image
+	Used     bool
 }
 
 func (c *Computer) ObjPosition() ut.Position {

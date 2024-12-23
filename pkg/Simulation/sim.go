@@ -245,7 +245,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	if sim.selected != nil {
 		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
 		y += 20
-		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d",
+		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t",
 			sim.selected.Id,
 			sim.selected.TypeAgt,
 			sim.selected.Position.X,
@@ -255,6 +255,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			sim.selected.DialogTimer,
 			sim.selected.CurrentAction,
 			sim.selected.MoveTimer,
+			sim.selected.Occupied,
 		)
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
 	}
