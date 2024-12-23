@@ -34,7 +34,6 @@ const (
 	AgentImageFile  = "ninja.png"
 	TilemapImage    = "img.png"
 	TilemapJSONFile = "spawn.json"
-	
 )
 
 type Simulation struct {
@@ -48,9 +47,8 @@ type Simulation struct {
 	carte       carte.Carte
 	selected    *ag.Agent
 	ctx         context.Context
-    cancel      context.CancelFunc
-	dialogFont font.Face
-
+	cancel      context.CancelFunc
+	dialogFont  font.Face
 }
 
 // NewSimulation initializes a new simulation
@@ -60,13 +58,12 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
 	env := createEnvironment(*carte)
-	agents := createAgents(env, carte, config.NumAgents)
+	agents := createAgents(&env, carte, config.NumAgents)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
-    if err != nil {
-        log.Fatal(err)
-    }
-
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return &Simulation{
 		env:         env,
@@ -76,14 +73,13 @@ func NewSimulation(config SimulationConfig) *Simulation {
 		start:       time.Now(),
 		carte:       *carte,
 		ctx:         ctx,
-        cancel:      cancel,
-		dialogFont:  truetype.NewFace(tt, &truetype.Options{
+		cancel:      cancel,
+		dialogFont: truetype.NewFace(tt, &truetype.Options{
 			Size: 12,
 			DPI:  72,
 		}),
 	}
 }
-
 
 func initializeWindow() {
 	ebiten.SetWindowSize(WindowWidth, WindowHeight)
@@ -92,7 +88,7 @@ func initializeWindow() {
 }
 
 func createEnvironment(carte carte.Carte) ag.Environnement {
-	return *ag.NewEnvironment(make([]ag.Agent, NumAgents), carte)
+	return *ag.NewEnvironment(make([]ag.Agent, NumAgents), carte, make([]ag.InterfaceObjet, 0))
 }
 
 func loadMap() *carte.Carte {
@@ -103,50 +99,46 @@ func loadMap() *carte.Carte {
 	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders)
 }
 func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
-    validPositions := []ut.Position{}
-    for layerIdx, layer := range carte.TilemapJSON.Layers {
-        for i, tileID := range layer.Data {
+	validPositions := []ut.Position{}
+	for layerIdx, layer := range carte.TilemapJSON.Layers {
+		for i, tileID := range layer.Data {
 			if tileID == 5 || tileID == 6 || tileID == 21 || tileID == 22 { // Assumindo que 0 representa um tile vazio
-                x := float64((i % layer.Width) * TileSize)
-                y := float64((i / layer.Width) * TileSize)
+				x := float64((i % layer.Width) * TileSize)
+				y := float64((i / layer.Width) * TileSize)
 				img := carte.Tilesets[layerIdx].Img(tileID)
 				offsetY := -(img.Bounds().Dy() + TileSize)
 				y += float64(offsetY)
 
-                validPositions = append(validPositions, ut.Position{X: x, Y: y})
-            }
-        }
-    }
-    return validPositions
+				validPositions = append(validPositions, ut.Position{X: x, Y: y})
+			}
+		}
+	}
+	return validPositions
 }
 
-
-func createAgents(env ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
+func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
 	agentsImg := loadImage(AssetsPath + AgentImageFile)
 	agents := make([]ag.Agent, NumAgents)
 
 	validPositions := getValidSpawnPositions(carte, 1)
 
 	if len(validPositions) < NumAgents {
-        log.Fatalf("Not enough valid spawn positions for all agents")
-    }
+		log.Fatalf("Not enough valid spawn positions for all agents")
+	}
 
 	rand.Shuffle(len(validPositions), func(i, j int) {
-        validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
-    })
-
-
+		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
+	})
 
 	// for i := 0; i < NumAgents; i++ {
 	// 	agents[i] = *ag.NewAgent(&env, ag.IdAgent(fmt.Sprintf("Agent%d", i)), rand.Float64(), rand.Float64(), validPositions[i], rand.Float64(), make(map[ag.IdAgent]float64), make(map[ag.IdAgent]float64), rand.Float64(), []float64{rand.Float64(), rand.Float64()}, []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)], make(chan int), agentsImg)
 	// 	env.AddAgent(agents[i])
 	// }
 
-
 	//i dont why we are creating agents like this and not using the function NewAgent
 	for i := 0; i < NumAgents; i++ {
 		agents[i] = ag.Agent{
-			Env:               &env,
+			Env:               env,
 			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
 			Velocite:          rand.Float64(),
 			Acuite:            rand.Float64(),
@@ -211,64 +203,62 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 }
 
 func (sim *Simulation) Draw(screen *ebiten.Image) {
-    // Desenha o fundo e os agentesrgba(57,61,125,255)
-    screen.Fill(color.RGBA{57,61,125,255})
-    sim.drawMap(screen)
-    sim.drawAgents(screen)
-    sim.drawColliders(screen)
-    sim.drawInfoPanel(screen)
+	// Desenha o fundo e os agentesrgba(57,61,125,255)
+	screen.Fill(color.RGBA{57, 61, 125, 255})
+	sim.drawMap(screen)
+	sim.drawAgents(screen)
+	sim.drawColliders(screen)
+	sim.drawInfoPanel(screen)
 }
 
 func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
-    panelX, panelY := 0, 0
-    panelWidth, panelHeight := 240, WindowHeight - 20
-    padding := 10
+	panelX, panelY := 0, 0
+	panelWidth, panelHeight := 240, WindowHeight-20
+	padding := 10
 
-    // Desenha o painel de fundo
-    vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
-    
-    // Título do painel
-    ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
-    
-    y := panelY + 30
+	// Desenha o painel de fundo
+	vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
 
-    // Informações da simulação
-    elapsed := time.Since(sim.start)
-    simInfo := fmt.Sprintf("Elapsed: %s",elapsed.Round(time.Second))
-    ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
-    y += 40
+	// Título do painel
+	ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
 
-    // Contagem de agentes por tipo
-    ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
-    y += 20
-    agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
-    for _, agentType := range agentTypes {
-        count, _ := sim.env.NbrAgents.Load(agentType)
-        ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", agentType, count), panelX+padding, y)
-        y += 20
-    }
-    y += 20
+	y := panelY + 30
 
-    // Informações do agente selecionado
-    if sim.selected != nil {
-        ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
-        y += 20
-        agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d",
-            sim.selected.Id,
-            sim.selected.TypeAgt,
-            sim.selected.Position.X,
-            sim.selected.Position.Y,
-            sim.selected.PersonalParameter,
-            sim.selected.Vivant,
+	// Informações da simulação
+	elapsed := time.Since(sim.start)
+	simInfo := fmt.Sprintf("Elapsed: %s", elapsed.Round(time.Second))
+	ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
+	y += 40
+
+	// Contagem de agentes por tipo
+	ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
+	y += 20
+	agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
+	for _, agentType := range agentTypes {
+		count, _ := sim.env.NbrAgents.Load(agentType)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", agentType, count), panelX+padding, y)
+		y += 20
+	}
+	y += 20
+
+	// Informações do agente selecionado
+	if sim.selected != nil {
+		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
+		y += 20
+		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d",
+			sim.selected.Id,
+			sim.selected.TypeAgt,
+			sim.selected.Position.X,
+			sim.selected.Position.Y,
+			sim.selected.PersonalParameter,
+			sim.selected.Vivant,
 			sim.selected.DialogTimer,
 			sim.selected.CurrentAction,
 			sim.selected.MoveTimer,
 		)
-        ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
-    }
+		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
+	}
 }
-
-
 
 func (sim *Simulation) drawMap(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
@@ -299,25 +289,24 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 }
 
 func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
-    if agent.CurrentAction == "" || agent.DialogTimer <= 0 {
-        return
-    }
+	if agent.CurrentAction == "" || agent.DialogTimer <= 0 {
+		return
+	}
 
-    dialogWidth := 100
-    dialogHeight := 30
-    x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
-    y := int(agent.Position.Y) - dialogHeight - 5
+	dialogWidth := 100
+	dialogHeight := 30
+	x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
+	y := int(agent.Position.Y) - dialogHeight - 5
 
-    // Desenha o fundo da caixa de diálogo
-    vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), color.RGBA{255, 255, 255, 200}, false)
+	// Desenha o fundo da caixa de diálogo
+	vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), color.RGBA{255, 255, 255, 200}, false)
 
-    // Desenha a borda da caixa de diálogo
-    vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
+	// Desenha a borda da caixa de diálogo
+	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
-    // Escreve o texto da ação
-    text.Draw(screen, agent.CurrentAction, sim.dialogFont, x+5, y+20, color.Black)
+	// Escreve o texto da ação
+	text.Draw(screen, agent.CurrentAction, sim.dialogFont, x+5, y+20, color.Black)
 }
-
 
 func (sim *Simulation) drawColliders(screen *ebiten.Image) {
 	for _, colider := range sim.carte.Coliders {
@@ -331,9 +320,9 @@ func (sim *Simulation) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 func (sim *Simulation) Update() error {
 	select {
-    case <-sim.ctx.Done():
-        return ebiten.Termination
-		default:
+	case <-sim.ctx.Done():
+		return ebiten.Termination
+	default:
 		// Posição do cursor
 		cursorX, cursorY := ebiten.CursorPosition()
 
@@ -356,29 +345,28 @@ func (sim *Simulation) Update() error {
 				if sim.agents[i].DialogTimer == 0 {
 					sim.agents[i].ClearAction()
 				}
-			}else {
-			sim.agents[i].Move() // Ou qualquer outra lógica de atualização do agente
+			} else {
+				sim.agents[i].Move() // Ou qualquer outra lógica de atualização do agente
 			}
 		}
 	}
 	return nil
 }
 
-
 func (sim *Simulation) Run() error {
-    defer sim.cancel() // Ensure context is canceled when Run() exits
+	defer sim.cancel() // Ensure context is canceled when Run() exits
 
-    go func() {
-        for _, ag := range sim.agents {
-            go ag.Start()
-        }
-        sim.start = time.Now()
-    }()
+	go func() {
+		for _, ag := range sim.agents {
+			go ag.Start()
+		}
+		sim.start = time.Now()
+	}()
 
-    if err := ebiten.RunGame(sim); err != nil && err != ebiten.Termination{
-        return err
-    }
-    // Affichages de finalisation
+	if err := ebiten.RunGame(sim); err != nil && err != ebiten.Termination {
+		return err
+	}
+	// Affichages de finalisation
 	fmt.Println("\n--- Simulation Terminée ---")
 	fmt.Printf("Durée totale : %s\n", time.Since(sim.start).Round(time.Second))
 
@@ -403,4 +391,3 @@ func (sim *Simulation) Run() error {
 	return nil
 
 }
-

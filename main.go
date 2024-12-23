@@ -7,7 +7,7 @@ import (
 
 func main() {
 	config := sim.ShowMenu()
-	
+
 	simulation := sim.NewSimulation(config)
 
 	if err := simulation.Run(); err != nil {
