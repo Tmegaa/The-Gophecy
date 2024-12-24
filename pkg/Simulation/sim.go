@@ -150,11 +150,11 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			Poid_rel:          []float64{rand.Float64(), rand.Float64()},
 			Vivant:            true,
 			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
-			SyncChan:          make(chan int),
+			SyncChan:          make(chan ag.Message),
 			Img:               agentsImg,
-			MoveTimer:         60,
+			MoveTimer:         2,
 			CurrentAction:     "Praying",
-			DialogTimer:       100,
+			DialogTimer:       2,
 		}
 		env.AddAgent(agents[i])
 	}
@@ -374,8 +374,8 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		for i, ag := range sim.agents {
-			
+		for i := range sim.agents {
+
 			if sim.agents[i].DialogTimer > 0 {
 				sim.agents[i].DialogTimer--
 				if sim.agents[i].DialogTimer == 0 {
@@ -386,18 +386,21 @@ func (sim *Simulation) Update() error {
 					if nearbyAgents, ok := sim.env.AgentProximity.Load(sim.agents[i].Id); ok {
 						log.Printf("Nearby agents of %s : %v", sim.agents[i].Id, nearbyAgents)
 					}
-				*/
-				sim.env.NearbyAgents(&ag)
-				switch sim.agents[i].CurrentAction {
 
-				case "Praying":
-					sim.agents[i].Pray()
-				case "Running":
-					sim.agents[i].Move()
-				case "Discuss":
-					log.Printf("Agent %s is discussing", sim.agents[i].Id)
-					//sim.agents[i].Discuss()
-				}
+				*/
+				/*
+					//sim.env.NearbyAgents(&ag)
+					switch sim.agents[i].CurrentAction {
+
+					case "Praying":
+						sim.agents[i].Pray()
+					case "Running":
+						sim.agents[i].Move()
+					case "Discuss":
+						//log.Printf("Agent %s is discussing", sim.agents[i].Id)
+						//sim.agents[i].Discuss()
+					}
+				*/
 			}
 		}
 	}
@@ -407,9 +410,10 @@ func (sim *Simulation) Update() error {
 func (sim *Simulation) Run() error {
 	defer sim.cancel() // Ensure context is canceled when Run() exits
 
+	go sim.env.Listen()
 	go func() {
-		for _, ag := range sim.agents {
-			go ag.Start()
+		for i := range sim.agents {
+			go sim.agents[i].Start()
 		}
 		sim.start = time.Now()
 	}()

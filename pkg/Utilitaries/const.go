@@ -31,3 +31,4 @@ type UniqueDirection struct {
 type Direction struct {
 	direction []UniqueDirection
 }
+

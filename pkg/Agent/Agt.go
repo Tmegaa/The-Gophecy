@@ -2,7 +2,6 @@ package pkg
 
 import (
 	ut "Gophecy/pkg/Utilitaries"
-	"fmt"
 	"log"
 
 	"math/rand"
@@ -18,7 +17,7 @@ type InterfaceAgent interface {
 	Programmer()
 	Perceive(*Environnement)
 	Deliberate()
-	//Act(*Environnement,typeFunc fun()) A implémenter
+	Act(*Environnement, string)
 }
 
 type SubTypeAgent string
@@ -53,7 +52,7 @@ type Agent struct {
 	Vivant            bool
 	TypeAgt           TypeAgent
 	SubType           SubTypeAgent
-	SyncChan          chan int
+	SyncChan          chan Message
 	Img               *ebiten.Image
 	MoveTimer         int
 	CurrentAction     string
@@ -63,7 +62,7 @@ type Agent struct {
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
-	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, typeAgt TypeAgent, subTypeAgent SubTypeAgent, syncChan chan int, img *ebiten.Image) *Agent {
+	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, typeAgt TypeAgent, subTypeAgent SubTypeAgent, syncChan chan Message, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatif pour chaque agents
 	poid_rel := make([]float64, 0)
@@ -76,7 +75,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 180, Occupied: false, AgentProximity: make([]Agent, 0)}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
 }
 
 func (ag *Agent) ID() IdAgent {
@@ -95,7 +94,9 @@ func (ag *Agent) Start() {
 		//var step int
 		for {
 			//step = <-ag.SyncChan
+			//time.Sleep(1 * time.Second)
 			nearby := ag.Percept(env)
+			//log.Printf("Agent %v is perceiving", ag.AgentProximity)
 			if len(nearby) > 0 {
 				log.Printf("Nearby agents %v", nearby)
 			}
@@ -104,7 +105,7 @@ func (ag *Agent) Start() {
 			if choice != "Move" {
 				log.Printf("%s ,choice  %s ", ag.Id, choice)
 			}
-			//ag.Act(env, choice)
+			ag.Act(env, choice)
 
 			//time.Sleep(1 * time.Second)
 			//ag.SyncChan <- step
@@ -139,49 +140,6 @@ func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
 	return false
 }
 
-func (ag *Agent) Move() {
-
-	ag.ClearAction()
-	if ag.MoveTimer > 0 {
-
-		ag.MoveTimer -= 1
-		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) || CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
-			//log.Printf("Collision")
-			return
-		}
-		ag.Position.X += ag.Position.Dx
-		ag.Position.Y += ag.Position.Dy
-		//log.Printf("Agent %s continued to move to %v", ag.Id, ag.Position)
-		return
-
-	}
-	randIdx := 0
-	collision := true
-	right := ut.UniqueDirection{Dx: ut.Maxspeed, Dy: 0}
-	left := ut.UniqueDirection{Dx: -ut.Maxspeed, Dy: 0}
-	down := ut.UniqueDirection{Dx: 0, Dy: ut.Maxspeed}
-	up := ut.UniqueDirection{Dx: 0, Dy: -ut.Maxspeed}
-
-	directions := []ut.UniqueDirection{right, left, down, up}
-
-	for collision {
-
-		randIdx = rand.Intn(len(directions))
-		tryX := ag.Position.X + directions[randIdx].Dx
-		tryY := ag.Position.Y + directions[randIdx].Dy
-		if !CheckCollisionHorizontal(tryX, tryY, ag.Env.Carte.Coliders) && !CheckCollisionVertical(tryX, tryY, ag.Env.Carte.Coliders) {
-			collision = false
-		}
-	}
-
-	ag.Position.Dx = directions[randIdx].Dx
-	ag.Position.Dy = directions[randIdx].Dy
-
-	//log.Printf("Agent %s moved to %v", ag.Id, ag.Position)
-	ag.MoveTimer = 60
-
-}
-
 /*
 func (ag *Agent) Percept(env *Environnement) (nearbyAgents []*Agent) {
 
@@ -204,9 +162,12 @@ func (ag *Agent) Percept(env *Environnement) (nearbyAgents []*Agent) {
 func (ag *Agent) Percept(env *Environnement) []Agent {
 	env.RLock()
 	defer env.RUnlock()
-	ag.AgentProximity = env.NearbyAgents(ag)
+	msg := Message{Type: "Perception", Agent: ag}
+	ag.SendToEnv(msg)
+	receive := <-ag.SyncChan
+	ag.AgentProximity = receive.NearbyAgents
 	if len(ag.AgentProximity) > 0 {
-		log.Printf("Agent %v is perceiving", ag.AgentProximity)
+		//log.Printf("Agent %v is perceiving", ag.AgentProximity)
 	}
 	return ag.AgentProximity
 }
@@ -229,7 +190,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent) string {
 	defer env.Unlock()
 
 	if len(nearbyAgents) > 0 {
-		log.Printf("NNNNNearby agents %v", nearbyAgents)
+		//log.Printf("NNNNNearby agents %v", nearbyAgents)
 	}
 	//aucun agent à proximité
 	if len(nearbyAgents) == 0 {
@@ -243,7 +204,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent) string {
 	for _, ag2 := range priority {
 		if !ag2.Occupied {
 			//si l'agent est du même type
-			fmt.Printf("Agent %v, Agent2 %v", ag.TypeAgt, ag2.TypeAgt)
+			//fmt.Printf("Agent %v, Agent2 %v", ag.TypeAgt, ag2.TypeAgt)
 			if ag.TypeAgt == ag2.TypeAgt {
 				switch {
 				case ag.TypeAgt == Sceptic:
@@ -279,19 +240,19 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent) string {
 	return "Move"
 }
 
-/*
-	func (ag *Agent) Act(env *Environnement, choice string) {
-		switch choice {
-		case "Move":
-			log.Printf("%v", ag.Position)
-			ag.Move()
-		case "Discuss":
-			//ag.Discuter()
-		case "Wait":
-			ag.ClearAction()
-		}
+func (ag *Agent) Act(env *Environnement, choice string) {
+	switch choice {
+	case "Move":
+		//log.Printf("%v", ag.Position)
+		ag.SendToEnv(Message{Type: "Move", Agent: ag})
+
+	case "Discuss":
+		//ag.Discuter()
+	case "Wait":
+		ag.ClearAction()
 	}
-*/
+}
+
 func (ag *Agent) SetAction(action string) {
 	ag.CurrentAction = action
 	ag.DialogTimer = 180 // 2 segundos a 60 FPS
@@ -308,4 +269,8 @@ func (ag *Agent) Pray() {
 
 func (ag *Agent) Eat() {
 	ag.SetAction("Eating")
+}
+
+func (ag *Agent) SendToEnv(msg Message) {
+	ag.Env.Communication <- msg
 }

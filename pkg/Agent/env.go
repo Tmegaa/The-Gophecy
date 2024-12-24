@@ -4,19 +4,27 @@ import (
 	carte "Gophecy/pkg/Carte"
 	ut "Gophecy/pkg/Utilitaries"
 	"log"
+	"math/rand"
 	"sync"
 )
 
 var lsType = []TypeAgent{Sceptic, Believer, Neutral}
+
+type Message struct {
+	Type         string
+	NearbyAgents []Agent
+	Agent        *Agent
+}
 
 type Environnement struct {
 	sync.RWMutex
 	Ags             []Agent
 	Carte           carte.Carte
 	Objs            []InterfaceObjet
-	NbrAgents       *sync.Map //key = typeAgent et value = int  -> Compteur d'agents par types
-	AgentProximity  *sync.Map //key = IDAgent et value = []*Agent -> Liste des agents proches
-	ObjectProximity *sync.Map //key = IDAgent et value = []*Objet -> Liste des objets proches
+	Communication   chan Message //key = IDAgent et value = []*Message -> Liste des messages reçus par l'agent
+	NbrAgents       *sync.Map    //key = typeAgent et value = int  -> Compteur d'agents par types
+	AgentProximity  *sync.Map    //key = IDAgent et value = []*Agent -> Liste des agents proches
+	ObjectProximity *sync.Map    //key = IDAgent et value = []*Objet -> Liste des objets proches
 }
 
 func NewEnvironment(ags []Agent, carte carte.Carte, objs []InterfaceObjet) (env *Environnement) {
@@ -26,7 +34,7 @@ func NewEnvironment(ags []Agent, carte carte.Carte, objs []InterfaceObjet) (env 
 		counter.Store(val, 0)
 	}
 
-	return &Environnement{Ags: ags, Objs: objs, NbrAgents: counter, Carte: carte, AgentProximity: &sync.Map{}}
+	return &Environnement{Ags: ags, Objs: objs, Communication: make(chan Message, 100), NbrAgents: counter, Carte: carte, AgentProximity: &sync.Map{}}
 }
 
 func (env *Environnement) AddAgent(ag Agent) {
@@ -64,7 +72,7 @@ func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
 		}
 	}
 	if len(nearbyAgents) > 0 {
-		log.Printf("NearbyAgent %v", nearbyAgents)
+		//log.Printf("NearbyAgent %v", nearbyAgents)
 	}
 	return nearbyAgents
 	//log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearby))
@@ -122,4 +130,73 @@ func (env *Environnement) NearbyObjects() {
 		//log.Printf("Agent %s has %d nearby objects", ag.ID(), len(nearbyObjects))
 		env.ObjectProximity.Store(ag.Id, nearbyObjects)
 	}
+}
+
+func (env *Environnement) Listen() {
+	go func() {
+		for msg := range env.Communication {
+			//log.Printf("env received a message from %v", msg.Agent.ID())
+			switch {
+			case msg.Type == "Perception":
+				near := env.NearbyAgents(msg.Agent)
+				env.SendToAgent(msg.Agent, Message{Type: "Nearby", NearbyAgents: near})
+
+			case msg.Type == "Move":
+				env.Move(msg.Agent)
+
+			}
+		}
+	}()
+}
+
+func (env *Environnement) SendToAgent(agt *Agent, msg Message) {
+	agt.SyncChan <- msg
+}
+
+func (env *Environnement) Move(ag *Agent) {
+
+	ag.ClearAction()
+
+	if ag.MoveTimer > 0 {
+
+		ag.MoveTimer -= 1
+		//log.Printf("MoveTimer %v", ag.MoveTimer)
+		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) || CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
+			log.Printf("Collision")
+			return
+		}
+		ag.Position.X += ag.Position.Dx
+		ag.Position.Y += ag.Position.Dy
+		//log.Printf("Agent %s continued to move to %v", ag.Id, ag.Position)
+
+		return
+
+	}
+
+	log.Printf("Agent %s is moving", ag.Id)
+	randIdx := 0
+	collision := true
+	right := ut.UniqueDirection{Dx: ut.Maxspeed, Dy: 0}
+	left := ut.UniqueDirection{Dx: -ut.Maxspeed, Dy: 0}
+	down := ut.UniqueDirection{Dx: 0, Dy: ut.Maxspeed}
+	up := ut.UniqueDirection{Dx: 0, Dy: -ut.Maxspeed}
+
+	directions := []ut.UniqueDirection{right, left, down, up}
+
+	for collision {
+
+		randIdx = rand.Intn(len(directions))
+		tryX := ag.Position.X + directions[randIdx].Dx
+		tryY := ag.Position.Y + directions[randIdx].Dy
+		if !CheckCollisionHorizontal(tryX, tryY, ag.Env.Carte.Coliders) && !CheckCollisionVertical(tryX, tryY, ag.Env.Carte.Coliders) {
+			collision = false
+		}
+	}
+
+	ag.Position.Dx = directions[randIdx].Dx
+	ag.Position.Dy = directions[randIdx].Dy
+
+	log.Printf("Agent %s moved to %v", ag.Id, ag.Position)
+	ag.MoveTimer = 60
+
 }
