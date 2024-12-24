@@ -13,7 +13,12 @@ type Rectangle struct {
 }
 
 func IsInRectangle(pos Position, area Rectangle) bool {
-	return pos.X >= area.PositionDL.X && pos.X <= area.PositionUR.X && pos.Y >= area.PositionDL.Y && pos.Y <= area.PositionUR.Y
+	// Calcula o centro do agente
+	centerX := pos.X + 16/2
+	centerY := pos.Y + 16/2
+
+	return centerX >= area.PositionDL.X && centerX <= area.PositionUR.X &&
+		centerY >= area.PositionUR.Y && centerY <= area.PositionDL.Y
 }
 
 const Maxspeed = 2.0

@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	TileSize        = 24
-	AgentImageSize  = 16
-	WindowWidth     = 1920
-	WindowHeight    = 1080
-	NumAgents       = 5
+	TileSize       = 24
+	AgentImageSize = 16
+	WindowWidth    = 1920
+	WindowHeight   = 1080
+	//NumAgents       = 5
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
 	AgentImageFile  = "ninja.png"
@@ -57,7 +57,7 @@ type Simulation struct {
 func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
-	env := createEnvironment(*carte)
+	env := createEnvironment(*carte, config.NumAgents)
 	agents := createAgents(&env, carte, config.NumAgents)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
@@ -68,7 +68,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	return &Simulation{
 		env:         env,
 		agents:      agents,
-		maxStep:     1000, // Você pode adicionar isso à configuração se desejar
+		maxStep:     10, // Você pode adicionar isso à configuração se desejar
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
 		carte:       *carte,
@@ -87,8 +87,8 @@ func initializeWindow() {
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 }
 
-func createEnvironment(carte carte.Carte) ag.Environnement {
-	return *ag.NewEnvironment(make([]ag.Agent, NumAgents), carte, make([]ag.InterfaceObjet, 0))
+func createEnvironment(carte carte.Carte, NumAgents int) ag.Environnement {
+	return *ag.NewEnvironment(make([]ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
 func loadMap() *carte.Carte {
@@ -141,7 +141,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			Env:               env,
 			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
 			Velocite:          rand.Float64(),
-			Acuite:            rand.Float64(),
+			Acuite:            30.0, //float64(rand.Intn(10)),
 			Position:          validPositions[i],
 			Opinion:           rand.Float64(),
 			Charisme:          make(map[ag.IdAgent]float64),
@@ -154,7 +154,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			Img:               agentsImg,
 			MoveTimer:         60,
 			CurrentAction:     "Praying",
-			DialogTimer:       400,
+			DialogTimer:       100,
 		}
 		env.AddAgent(agents[i])
 	}
@@ -207,8 +207,39 @@ func (sim *Simulation) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{57, 61, 125, 255})
 	sim.drawMap(screen)
 	sim.drawAgents(screen)
+	sim.drawAcuite(screen)
 	sim.drawColliders(screen)
 	sim.drawInfoPanel(screen)
+}
+
+func (sim Simulation) drawAcuite(screen *ebiten.Image) {
+	for _, agent := range sim.agents {
+
+		centerX := agent.Position.X + float64(AgentImageSize)/2
+		centerY := agent.Position.Y + float64(AgentImageSize)/2
+
+		area := ut.Rectangle{
+			PositionDL: ut.Position{
+				X: centerX - agent.Acuite,
+				Y: centerY + agent.Acuite,
+			},
+			PositionUR: ut.Position{
+				X: centerX + agent.Acuite,
+				Y: centerY - agent.Acuite,
+			},
+		}
+
+		vector.StrokeRect(
+			screen,
+			float32(area.PositionDL.X),
+			float32(area.PositionUR.Y),
+			float32(area.PositionUR.X-area.PositionDL.X),
+			float32(area.PositionDL.Y-area.PositionUR.Y),
+			1,
+			color.RGBA{255, 0, 0, 128},
+			false,
+		)
+	}
 }
 
 func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
@@ -324,6 +355,9 @@ func (sim *Simulation) Update() error {
 	case <-sim.ctx.Done():
 		return ebiten.Termination
 	default:
+		//Detection des nearby agents
+
+		//log.Printf("Agents proches détectés: %v", sim.env.AgentProximity)
 		// Posição do cursor
 		cursorX, cursorY := ebiten.CursorPosition()
 
@@ -340,14 +374,30 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		for i := range sim.agents {
+		for i, ag := range sim.agents {
+			
 			if sim.agents[i].DialogTimer > 0 {
 				sim.agents[i].DialogTimer--
 				if sim.agents[i].DialogTimer == 0 {
 					sim.agents[i].ClearAction()
 				}
 			} else {
-				sim.agents[i].Move() // Ou qualquer outra lógica de atualização do agente
+				/*
+					if nearbyAgents, ok := sim.env.AgentProximity.Load(sim.agents[i].Id); ok {
+						log.Printf("Nearby agents of %s : %v", sim.agents[i].Id, nearbyAgents)
+					}
+				*/
+				sim.env.NearbyAgents(&ag)
+				switch sim.agents[i].CurrentAction {
+
+				case "Praying":
+					sim.agents[i].Pray()
+				case "Running":
+					sim.agents[i].Move()
+				case "Discuss":
+					log.Printf("Agent %s is discussing", sim.agents[i].Id)
+					//sim.agents[i].Discuss()
+				}
 			}
 		}
 	}

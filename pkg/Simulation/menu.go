@@ -9,9 +9,8 @@ import (
 )
 
 type SimulationConfig struct {
-	NumAgents       int
-	SimulationTime  time.Duration
-	
+	NumAgents      int
+	SimulationTime time.Duration
 }
 
 func ShowMenu() SimulationConfig {
@@ -23,7 +22,6 @@ func ShowMenu() SimulationConfig {
 	durationMinutes := getIntInput("Durée de la simulation (en minutes)")
 	config.SimulationTime = time.Duration(durationMinutes) * time.Minute
 
-	
 	// Adicione mais opções de configuração aqui
 
 	return config

@@ -59,6 +59,7 @@ type Agent struct {
 	CurrentAction     string
 	DialogTimer       int
 	Occupied          bool
+	AgentProximity    []Agent
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
@@ -75,7 +76,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 180, Occupied: false}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 180, Occupied: false, AgentProximity: make([]Agent, 0)}
 }
 
 func (ag *Agent) ID() IdAgent {
@@ -91,16 +92,24 @@ func (ag *Agent) Start() {
 
 	go func() {
 		env := ag.Env
-		var step int
+		//var step int
 		for {
-			step = <-ag.SyncChan
+			//step = <-ag.SyncChan
 			nearby := ag.Percept(env)
+			if len(nearby) > 0 {
+				log.Printf("Nearby agents %v", nearby)
+			}
 			choice := ag.Deliberate(env, nearby)
-			fmt.Println(ag.Id, choice)
-			ag.Act(env, choice)
 
-			ag.SyncChan <- step
+			if choice != "Move" {
+				log.Printf("%s ,choice  %s ", ag.Id, choice)
+			}
+			//ag.Act(env, choice)
+
+			//time.Sleep(1 * time.Second)
+			//ag.SyncChan <- step
 		}
+
 	}()
 }
 
@@ -131,15 +140,18 @@ func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
 }
 
 func (ag *Agent) Move() {
+
 	ag.ClearAction()
 	if ag.MoveTimer > 0 {
 
 		ag.MoveTimer -= 1
 		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) || CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
+			//log.Printf("Collision")
 			return
 		}
 		ag.Position.X += ag.Position.Dx
 		ag.Position.Y += ag.Position.Dy
+		//log.Printf("Agent %s continued to move to %v", ag.Id, ag.Position)
 		return
 
 	}
@@ -165,19 +177,38 @@ func (ag *Agent) Move() {
 	ag.Position.Dx = directions[randIdx].Dx
 	ag.Position.Dy = directions[randIdx].Dy
 
+	//log.Printf("Agent %s moved to %v", ag.Id, ag.Position)
 	ag.MoveTimer = 60
 
 }
 
+/*
 func (ag *Agent) Percept(env *Environnement) (nearbyAgents []*Agent) {
 
+		env.RLock()
+		defer env.RUnlock()
+
+		log.Printf("Agent %v is perceiving", env.AgentProximity)
+		value, _ := env.AgentProximity.Load(ag.Id)
+		if value == nil {
+			log.Printf("Agent %v has no nearby agents", value)
+			nearbyAgents = make([]*Agent, 0)
+			return nearbyAgents
+		}
+
+		nearby := value.([]*Agent)
+		log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearby))
+		return nearby
+	}
+*/
+func (ag *Agent) Percept(env *Environnement) []Agent {
 	env.RLock()
 	defer env.RUnlock()
-
-	value, _ := env.AgentProximity.Load(ag.Id)
-	nearby := value.([]*Agent)
-
-	return nearby
+	ag.AgentProximity = env.NearbyAgents(ag)
+	if len(ag.AgentProximity) > 0 {
+		log.Printf("Agent %v is perceiving", ag.AgentProximity)
+	}
+	return ag.AgentProximity
 }
 
 func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
@@ -192,12 +223,18 @@ func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
 	return priority
 }
 
-func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent) string {
+func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent) string {
 	//TODO GESTION COMPUTER
 	env.Lock()
 	defer env.Unlock()
+
+	if len(nearbyAgents) > 0 {
+		log.Printf("NNNNNearby agents %v", nearbyAgents)
+	}
 	//aucun agent à proximité
 	if len(nearbyAgents) == 0 {
+		//log.Printf("Agent %v has no nearby agents", nearbyAgents)
+		ag.ClearAction()
 		return "Move"
 	}
 	//TODO FONCTION SET PRIORITY
@@ -206,6 +243,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent) string {
 	for _, ag2 := range priority {
 		if !ag2.Occupied {
 			//si l'agent est du même type
+			fmt.Printf("Agent %v, Agent2 %v", ag.TypeAgt, ag2.TypeAgt)
 			if ag.TypeAgt == ag2.TypeAgt {
 				switch {
 				case ag.TypeAgt == Sceptic:
@@ -241,10 +279,19 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent) string {
 	return "Move"
 }
 
-func (ag *Agent) Act(env *Environnement, choice string) {
-	//TODO
-}
-
+/*
+	func (ag *Agent) Act(env *Environnement, choice string) {
+		switch choice {
+		case "Move":
+			log.Printf("%v", ag.Position)
+			ag.Move()
+		case "Discuss":
+			//ag.Discuter()
+		case "Wait":
+			ag.ClearAction()
+		}
+	}
+*/
 func (ag *Agent) SetAction(action string) {
 	ag.CurrentAction = action
 	ag.DialogTimer = 180 // 2 segundos a 60 FPS

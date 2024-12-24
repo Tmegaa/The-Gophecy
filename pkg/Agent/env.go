@@ -3,6 +3,7 @@ package pkg
 import (
 	carte "Gophecy/pkg/Carte"
 	ut "Gophecy/pkg/Utilitaries"
+	"log"
 	"sync"
 )
 
@@ -47,28 +48,60 @@ func (env *Environnement) AddAgent(ag Agent) {
 	}
 }
 
-// NearbyAgents calcule les agents proches de chaque agent
-func (env *Environnement) NearbyAgents() {
-	env.Lock()
-	defer env.Unlock()
-	for _, ag := range env.Ags {
-		var nearbyAgents []*Agent
-		pos := ag.AgtPosition()
-		var area ut.Rectangle
-		area.PositionDL.X = pos.X - ag.Acuite
-		area.PositionDL.Y = pos.Y + ag.Acuite
-		area.PositionUR.X = pos.X + ag.Acuite
-		area.PositionUR.Y = pos.Y - ag.Acuite
+func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
+	nearbyAgents := make([]Agent, 0)
+	pos := ag.AgtPosition()
+	var area ut.Rectangle
+	area.PositionDL.X = pos.X - ag.Acuite
+	area.PositionDL.Y = pos.Y + ag.Acuite
+	area.PositionUR.X = pos.X + ag.Acuite
+	area.PositionUR.Y = pos.Y - ag.Acuite
 
-		for _, ag2 := range env.Ags {
-			if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
-				nearbyAgents = append(nearbyAgents, &ag2)
-			}
+	for _, ag2 := range env.Ags {
+		if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
+			nearbyAgents = append(nearbyAgents, ag2)
+			//log.Printf("Top %v", nearbyAgents)
 		}
-		env.AgentProximity.Store(ag.Id, nearbyAgents)
 	}
+	if len(nearbyAgents) > 0 {
+		log.Printf("NearbyAgent %v", nearbyAgents)
+	}
+	return nearbyAgents
+	//log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearby))
 }
 
+/*
+// NearbyAgents calcule les agents proches de chaque agent
+
+	func (env *Environnement) NearbyAgents() {
+		env.Lock()
+		defer env.Unlock()
+		env.AgentProximity = &sync.Map{}
+		for _, ag := range env.Ags {
+			var nearbyAgents []*Agent
+			pos := ag.AgtPosition()
+			var area ut.Rectangle
+			area.PositionDL.X = pos.X - ag.Acuite
+			area.PositionDL.Y = pos.Y + ag.Acuite
+			area.PositionUR.X = pos.X + ag.Acuite
+			area.PositionUR.Y = pos.Y - ag.Acuite
+
+			for _, ag2 := range env.Ags {
+
+				if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
+					nearbyAgents = append(nearbyAgents, &ag2)
+					//log.Printf("Top %v", nearbyAgents)
+				}
+			}
+			//log.Printf("Agent %s has %d nearby agents", ag.ID(), len(nearbyAgents))
+			if len(nearbyAgents) > 0 {
+				//log.Printf("NearbyAgent %v", nearbyAgents)
+			}
+			env.AgentProximity.Store(ag.Id, nearbyAgents)
+			//log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearbyAgents))
+		}
+	}
+*/
 func (env *Environnement) NearbyObjects() {
 	env.Lock()
 	defer env.Unlock()
@@ -86,6 +119,7 @@ func (env *Environnement) NearbyObjects() {
 				nearbyObjects = append(nearbyObjects, &obj)
 			}
 		}
+		//log.Printf("Agent %s has %d nearby objects", ag.ID(), len(nearbyObjects))
 		env.ObjectProximity.Store(ag.Id, nearbyObjects)
 	}
 }
