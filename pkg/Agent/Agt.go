@@ -3,6 +3,7 @@ package pkg
 import (
 	ut "Gophecy/pkg/Utilitaries"
 	"log"
+	"time"
 
 	"math/rand"
 
@@ -107,7 +108,7 @@ func (ag *Agent) Start() {
 			}
 			ag.Act(env, choice)
 
-			//time.Sleep(1 * time.Second)
+			time.Sleep(1 * time.Second)
 			//ag.SyncChan <- step
 		}
 
