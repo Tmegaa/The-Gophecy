@@ -23,12 +23,12 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 )
 
+// Constantes de la simulation
 const (
-	TileSize       = 24
-	AgentImageSize = 16
-	WindowWidth    = 1920
-	WindowHeight   = 1080
-	//NumAgents       = 5
+	TileSize        = 24
+	AgentImageSize  = 16
+	WindowWidth     = 1920
+	WindowHeight    = 1080
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
 	AgentImageFile  = "ninja.png"
@@ -51,9 +51,7 @@ type Simulation struct {
 	dialogFont  font.Face
 }
 
-// NewSimulation initializes a new simulation
-// pkg/Simulation/simulation.go
-
+// Fonction qui lance une nouvelle simulation
 func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
@@ -68,7 +66,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	return &Simulation{
 		env:         env,
 		agents:      agents,
-		maxStep:     10, // Você pode adicionar isso à configuração se desejar
+		maxStep:     10, // Possible de l'ajouter à la configuration
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
 		carte:       *carte,
@@ -81,16 +79,19 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	}
 }
 
+// Fonction qui initialise la fenêtre d'affichage de la simulation
 func initializeWindow() {
 	ebiten.SetWindowSize(WindowWidth, WindowHeight)
 	ebiten.SetWindowTitle("Simulation")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 }
 
+// Fonction qui crée et retourne un nouvel environnement
 func createEnvironment(carte carte.Carte, NumAgents int) ag.Environnement {
 	return *ag.NewEnvironment(make([]ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
+// Fonction qui charge la carte
 func loadMap() *carte.Carte {
 	tilemapImg := loadImage(AssetsPath + TilemapImage)
 	tilemapJSON := loadTilemapJSON(MapsPath + TilemapJSONFile)
@@ -98,11 +99,13 @@ func loadMap() *carte.Carte {
 	coliders := generateColliders(tilemapJSON, tilesets)
 	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders)
 }
+
+// Fonction qui renvoie une liste des positions possibles que peuvent prendre les objets ou les agents
 func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 	validPositions := []ut.Position{}
 	for layerIdx, layer := range carte.TilemapJSON.Layers {
 		for i, tileID := range layer.Data {
-			if tileID == 5 || tileID == 6 || tileID == 21 || tileID == 22 { // Assumindo que 0 representa um tile vazio
+			if tileID == 5 || tileID == 6 || tileID == 21 || tileID == 22 { // En supposant que 0 représente une tile vide
 				x := float64((i % layer.Width) * TileSize)
 				y := float64((i / layer.Width) * TileSize)
 				img := carte.Tilesets[layerIdx].Img(tileID)
@@ -116,6 +119,7 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 	return validPositions
 }
 
+// Fonction qui crée et rajoute à la carte les nouveaux agents
 func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
 	agentsImg := loadImage(AssetsPath + AgentImageFile)
 	agents := make([]ag.Agent, NumAgents)
@@ -337,7 +341,7 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
 	// Escreve o texto da ação
-	text.Draw(screen, agent.CurrentAction, sim.dialogFont, x+5, y+20, color.Black)
+	text.Draw(screen, string(agent.CurrentAction), sim.dialogFont, x+5, y+20, color.Black)
 }
 
 func (sim *Simulation) drawColliders(screen *ebiten.Image) {

@@ -1,4 +1,4 @@
-package pkg
+package agent
 
 import (
 	carte "Gophecy/pkg/Carte"
@@ -10,8 +10,18 @@ import (
 
 var lsType = []TypeAgent{Sceptic, Believer, Neutral}
 
+// Liste des types de messages possibles
+type MessageType string
+
+const (
+	PerceptionMsg MessageType = "Perception"
+	NearbyMsg     MessageType = "Nearby"
+	MoveMsg       MessageType = "Move"
+)
+
+// Structure d'un message
 type Message struct {
-	Type         string
+	Type         MessageType
 	NearbyAgents []Agent
 	Agent        *Agent
 }
@@ -27,7 +37,9 @@ type Environnement struct {
 	ObjectProximity *sync.Map    //key = IDAgent et value = []*Objet -> Liste des objets proches
 }
 
+// Fonction d'initialisation d'un nouvel environnement
 func NewEnvironment(ags []Agent, carte carte.Carte, objs []InterfaceObjet) (env *Environnement) {
+	// Initialisation du compteur du nombre d'agents par type
 	counter := &sync.Map{}
 
 	for _, val := range lsType {
@@ -37,6 +49,7 @@ func NewEnvironment(ags []Agent, carte carte.Carte, objs []InterfaceObjet) (env 
 	return &Environnement{Ags: ags, Objs: objs, Communication: make(chan Message, 100), NbrAgents: counter, Carte: carte, AgentProximity: &sync.Map{}}
 }
 
+// Fonction qui ajoute un nouvel agent dans l'environnement
 func (env *Environnement) AddAgent(ag Agent) {
 	env.Ags = append(env.Ags, ag)
 
@@ -56,24 +69,28 @@ func (env *Environnement) AddAgent(ag Agent) {
 	}
 }
 
+// Fonction qui envoie la liste des agents proches pour un agent donné
 func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
 	nearbyAgents := make([]Agent, 0)
 	pos := ag.AgtPosition()
+
+	// Création du rectangle de perception
 	var area ut.Rectangle
 	area.PositionDL.X = pos.X - ag.Acuite
 	area.PositionDL.Y = pos.Y + ag.Acuite
 	area.PositionUR.X = pos.X + ag.Acuite
 	area.PositionUR.Y = pos.Y - ag.Acuite
 
+	// On itère sur tous les agents de la carte pour voir si un agent est dans le rectangle de perception
 	for _, ag2 := range env.Ags {
 		if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
 			nearbyAgents = append(nearbyAgents, ag2)
 			//log.Printf("Top %v", nearbyAgents)
 		}
 	}
-	if len(nearbyAgents) > 0 {
-		//log.Printf("NearbyAgent %v", nearbyAgents)
-	}
+	// if len(nearbyAgents) > 0 {
+	//log.Printf("NearbyAgent %v", nearbyAgents)
+	// }
 	return nearbyAgents
 	//log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearby))
 }
@@ -110,18 +127,23 @@ func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
 		}
 	}
 */
+
+// Fonction qui envoie la liste des objets proches pour un agent donné
 func (env *Environnement) NearbyObjects() {
 	env.Lock()
 	defer env.Unlock()
 	for _, ag := range env.Ags {
 		var nearbyObjects []*InterfaceObjet
 		pos := ag.AgtPosition()
+
+		// Création du rectangle de perception
 		var area ut.Rectangle
 		area.PositionDL.X = pos.X - ag.Acuite
 		area.PositionDL.Y = pos.Y + ag.Acuite
 		area.PositionUR.X = pos.X + ag.Acuite
 		area.PositionUR.Y = pos.Y - ag.Acuite
 
+		// On itère sur tous les objets de la carte pour voir si un objet est dans le rectangle de perception
 		for _, obj := range env.Objs {
 			if ut.IsInRectangle(obj.ObjPosition(), area) {
 				nearbyObjects = append(nearbyObjects, &obj)
@@ -132,16 +154,17 @@ func (env *Environnement) NearbyObjects() {
 	}
 }
 
+// Fonction de l'environnement qui gère la communication avec les agents via les channels
 func (env *Environnement) Listen() {
 	go func() {
 		for msg := range env.Communication {
 			//log.Printf("env received a message from %v", msg.Agent.ID())
 			switch {
-			case msg.Type == "Perception":
+			case msg.Type == PerceptionMsg:
 				near := env.NearbyAgents(msg.Agent)
-				env.SendToAgent(msg.Agent, Message{Type: "Nearby", NearbyAgents: near})
+				env.SendToAgent(msg.Agent, Message{Type: NearbyMsg, NearbyAgents: near})
 
-			case msg.Type == "Move":
+			case msg.Type == MoveMsg:
 				env.Move(msg.Agent)
 
 			}

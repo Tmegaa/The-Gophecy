@@ -1,4 +1,4 @@
-package pkg
+package agent
 
 import (
 	ut "Gophecy/pkg/Utilitaries"
