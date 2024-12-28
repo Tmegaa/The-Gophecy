@@ -1,14 +1,15 @@
 package pkg
 
 import (
-	ut "Gophecy/pkg/Utilitaries"
+	pos "Gophecy/pkg/Utilitaries"
 
 	"github.com/hajimehoshi/ebiten/v2" // Ebiten
 )
 
 type InterfaceObjet interface {
-	ObjPosition() ut.Position
+	ObjPosition() pos.Position
 	ID() IdObjet
+	GetUse() bool
 }
 
 type Programm string
@@ -23,20 +24,24 @@ type IdObjet string
 type Computer struct {
 	Env      *Environnement
 	Id       IdObjet
-	Position ut.Position
+	Position pos.Position
 	Programm Programm
 	Img      *ebiten.Image
 	Used     bool
 }
 
-func (c *Computer) ObjPosition() ut.Position {
+func (c *Computer) ObjPosition() pos.Position {
 	return c.Position
+}
+
+func (c *Computer) GetUse() bool {
+	return c.Used
 }
 
 func (c *Computer) ID() IdObjet {
 	return c.Id
 }
 
-func NewComputer(env *Environnement, id IdObjet, pos ut.Position) *Computer {
+func NewComputer(env *Environnement, id IdObjet, pos pos.Position) *Computer {
 	return &Computer{Env: env, Id: id, Position: pos, Programm: "None", Used: false}
 }

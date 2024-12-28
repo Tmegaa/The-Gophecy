@@ -23,7 +23,6 @@ func ShowMenu() SimulationConfig {
 	config.SimulationTime = time.Duration(durationMinutes) * time.Minute
 
 	// Adicione mais opções de configuração aqui
-
 	return config
 }
 

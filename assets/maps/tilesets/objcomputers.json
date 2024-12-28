@@ -1,0 +1,30 @@
+{ "columns":0,
+ "grid":
+    {
+     "height":1,
+     "orientation":"orthogonal",
+     "width":1
+    },
+ "margin":0,
+ "name":"objcomputers",
+ "spacing":0,
+ "tilecount":2,
+ "tiledversion":"1.11.0",
+ "tileheight":41,
+ "tiles":[
+        {
+         "id":0,
+         "image":"..\/..\/objects\/map (33).png",
+         "imageheight":39,
+         "imagewidth":34
+        }, 
+        {
+         "id":1,
+         "image":"..\/..\/objects\/map (35).png",
+         "imageheight":41,
+         "imagewidth":35
+        }],
+ "tilewidth":35,
+ "type":"tileset",
+ "version":"1.10"
+}

@@ -60,6 +60,9 @@ type Agent struct {
 	DialogTimer       int
 	Occupied          bool
 	AgentProximity    []Agent
+	ComputerProximity []*Computer
+	UseComputer       *Computer
+	LastComputer      *Computer
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
@@ -76,8 +79,10 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0), ComputerProximity: make([]*Computer, 0), UseComputer: nil, LastComputer: nil}
 }
+
+
 
 func (ag *Agent) ID() IdAgent {
 	return ag.Id
@@ -92,26 +97,13 @@ func (ag *Agent) Start() {
 
 	go func() {
 		env := ag.Env
-		//var step int
 		for {
-			//step = <-ag.SyncChan
-			//time.Sleep(1 * time.Second)
-			nearby := ag.Percept(env)
-			//log.Printf("Agent %v is perceiving", ag.AgentProximity)
-			if len(nearby) > 0 {
-				log.Printf("Nearby agents %v", nearby)
-			}
-			choice := ag.Deliberate(env, nearby)
-
-			if choice != "Move" {
-				log.Printf("%s ,choice  %s ", ag.Id, choice)
-			}
+			
+			nearby, obj := ag.Percept(env)
+			choice := ag.Deliberate(env, nearby, obj)
 			ag.Act(env, choice)
-
-			time.Sleep(1 * time.Second)
-			//ag.SyncChan <- step
+			time.Sleep(20 * time.Millisecond)
 		}
-
 	}()
 }
 
@@ -141,26 +133,7 @@ func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
 	return false
 }
 
-/*
-func (ag *Agent) Percept(env *Environnement) (nearbyAgents []*Agent) {
-
-		env.RLock()
-		defer env.RUnlock()
-
-		log.Printf("Agent %v is perceiving", env.AgentProximity)
-		value, _ := env.AgentProximity.Load(ag.Id)
-		if value == nil {
-			log.Printf("Agent %v has no nearby agents", value)
-			nearbyAgents = make([]*Agent, 0)
-			return nearbyAgents
-		}
-
-		nearby := value.([]*Agent)
-		log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearby))
-		return nearby
-	}
-*/
-func (ag *Agent) Percept(env *Environnement) []Agent {
+func (ag *Agent) Percept(env *Environnement) ([]Agent, []*Computer) {
 	env.RLock()
 	defer env.RUnlock()
 	msg := Message{Type: "Perception", Agent: ag}
@@ -170,7 +143,11 @@ func (ag *Agent) Percept(env *Environnement) []Agent {
 	if len(ag.AgentProximity) > 0 {
 		//log.Printf("Agent %v is perceiving", ag.AgentProximity)
 	}
-	return ag.AgentProximity
+
+	// percept computers
+	ag.ComputerProximity =  env.NearbyObjects(ag)
+	
+	return nil, ag.ComputerProximity
 }
 
 func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
@@ -178,17 +155,53 @@ func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
 		switch ag.SubType {
 		case Pirate:
 			for _,
-
-
 	*/
+	
 	priority := nearby
 	return priority
 }
 
-func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent) string {
+func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*Computer) string {
 	//TODO GESTION COMPUTER
 	env.Lock()
 	defer env.Unlock()
+
+	if len(obj) > 0 {
+		//escolher um computador aleatório	
+		randomIndex := rand.Intn(len(obj))
+		// if ag.LastComputer == obj[randomIndex] {
+		// 	return "Move"
+		// }
+
+		if obj[randomIndex].Used {
+			return "Move"
+		}
+
+		switch obj[randomIndex].Programm {
+		case "Go":
+			if ag.TypeAgt == Believer {
+				return "Move"
+			} else if ag.TypeAgt == Neutral {
+				return "Move"
+			}else {
+				obj[randomIndex].Programm = "None"
+			}
+		case "None":
+			if ag.TypeAgt == Believer {
+				obj[randomIndex].Programm = "Go"
+			} else if ag.TypeAgt == Neutral {
+				return "Move"
+			}else {
+				return "Move"
+			}
+		}
+
+		obj[randomIndex].Used = true
+		ag.Occupied = true
+		ag.UseComputer = obj[randomIndex]
+		ag.LastComputer = obj[randomIndex]
+		return "Computer"
+	}
 
 	if len(nearbyAgents) > 0 {
 		//log.Printf("NNNNNearby agents %v", nearbyAgents)
@@ -242,10 +255,17 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent) string {
 }
 
 func (ag *Agent) Act(env *Environnement, choice string) {
+	if ag.CurrentAction != "Running" {
+		return //l'agent est occupés
+	}
 	switch choice {
 	case "Move":
 		//log.Printf("%v", ag.Position)
 		ag.SendToEnv(Message{Type: "Move", Agent: ag})
+	
+	case "Computer":
+
+		ag.SetAction("Using Computer")
 
 	case "Discuss":
 		//ag.Discuter()

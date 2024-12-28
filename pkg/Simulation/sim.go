@@ -28,7 +28,7 @@ const (
 	AgentImageSize = 16
 	WindowWidth    = 1920
 	WindowHeight   = 1080
-	//NumAgents       = 5
+	NumComputers	= 1
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
 	AgentImageFile  = "ninja.png"
@@ -39,6 +39,7 @@ const (
 type Simulation struct {
 	env         ag.Environnement
 	agents      []ag.Agent
+	Computers   []ag.Computer
 	maxStep     int
 	maxDuration time.Duration
 	step        int
@@ -46,9 +47,11 @@ type Simulation struct {
 	syncChans   sync.Map
 	carte       carte.Carte
 	selected    *ag.Agent
+	selectedPC  *ag.Computer
 	ctx         context.Context
 	cancel      context.CancelFunc
 	dialogFont  font.Face
+	selectionIndicator *ebiten.Image
 }
 
 // NewSimulation initializes a new simulation
@@ -58,6 +61,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
 	env := createEnvironment(*carte, config.NumAgents)
+	obj := loadObjects(&env, carte)
 	agents := createAgents(&env, carte, config.NumAgents)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
@@ -65,9 +69,13 @@ func NewSimulation(config SimulationConfig) *Simulation {
 		log.Fatal(err)
 	}
 
+	selectionIndicator := ebiten.NewImage(TileSize, TileSize)
+    selectionIndicator.Fill(color.RGBA{255, 255, 0, 128}) // Amarelo semi-transparente
+
 	return &Simulation{
 		env:         env,
 		agents:      agents,
+		Computers:   obj,
 		maxStep:     10, // Você pode adicionar isso à configuração se desejar
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
@@ -78,6 +86,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 			Size: 12,
 			DPI:  72,
 		}),
+		selectionIndicator: selectionIndicator,
 	}
 }
 
@@ -88,7 +97,7 @@ func initializeWindow() {
 }
 
 func createEnvironment(carte carte.Carte, NumAgents int) ag.Environnement {
-	return *ag.NewEnvironment(make([]ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
+	return *ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
 func loadMap() *carte.Carte {
@@ -96,8 +105,27 @@ func loadMap() *carte.Carte {
 	tilemapJSON := loadTilemapJSON(MapsPath + TilemapJSONFile)
 	tilesets := loadTilesets(tilemapJSON)
 	coliders := generateColliders(tilemapJSON, tilesets)
-	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders)
+	computers := generateComputers(tilemapJSON, tilesets)
+
+	// fazer gerate computer.
+	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders, computers)
 }
+
+
+func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.Computer{
+	computer := make([]ag.Computer, NumComputers)
+	for i := 0; i < NumComputers; i++ {
+		computer[i] = *ag.NewComputer(
+			env,
+			ag.IdObjet(fmt.Sprintf("Computer%d", i)),
+			ut.Position{X: float64(env.Carte.Ordinateurs[i].Min.X), Y: float64(env.Carte.Ordinateurs[i].Min.Y)},
+			)
+		env.Objs = append(env.Objs, &computer[i])
+	}
+	return computer
+}
+
+
 func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 	validPositions := []ut.Position{}
 	for layerIdx, layer := range carte.TilemapJSON.Layers {
@@ -141,7 +169,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			Env:               env,
 			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
 			Velocite:          rand.Float64(),
-			Acuite:            30.0, //float64(rand.Intn(10)),
+			Acuite:            50.0, //float64(rand.Intn(10)),
 			Position:          validPositions[i],
 			Opinion:           rand.Float64(),
 			Charisme:          make(map[ag.IdAgent]float64),
@@ -155,8 +183,14 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			MoveTimer:         2,
 			CurrentAction:     "Praying",
 			DialogTimer:       2,
+			Occupied:          false,
+			AgentProximity:    make([]ag.Agent, 0),
+			ComputerProximity: make([]*ag.Computer, 0),
+			UseComputer:       nil, //Using computer x
+			LastComputer:      nil, //Last computer used
+
 		}
-		env.AddAgent(agents[i])
+		env.AddAgent(&agents[i])
 	}
 	return agents
 }
@@ -185,6 +219,24 @@ func loadTilesets(tilemapJSON *tile.TilemapJSON) []tile.Tileset {
 	return tilesets
 }
 
+func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []image.Rectangle {
+	var computersPositions []image.Rectangle
+	for layerIdx, layer := range tilemapJSON.Layers {
+		for i, tileID := range layer.Data {
+			if tileID == 0 || layerIdx == 0 || layerIdx == 1{
+				continue
+			}
+			log.Printf("TileID : %d", tileID)
+			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
+			img := tilesets[layerIdx].Img(tileID)
+			offsetY := -(img.Bounds().Dy() + TileSize)
+			y += offsetY
+			computersPositions = append(computersPositions, image.Rect(x, y, x+img.Bounds().Dx(), y+img.Bounds().Dy()))
+		}
+	}
+	return computersPositions
+}
+
 func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []image.Rectangle {
 	var coliders []image.Rectangle
 	for layerIdx, layer := range tilemapJSON.Layers {
@@ -210,6 +262,19 @@ func (sim *Simulation) Draw(screen *ebiten.Image) {
 	sim.drawAcuite(screen)
 	sim.drawColliders(screen)
 	sim.drawInfoPanel(screen)
+	sim.drawSelectionIndicator(screen)
+}
+
+func (sim *Simulation) drawSelectionIndicator(screen *ebiten.Image) {
+    opts := &ebiten.DrawImageOptions{}
+    
+    if sim.selected != nil {
+        opts.GeoM.Translate(sim.selected.Position.X, sim.selected.Position.Y)
+        screen.DrawImage(sim.selectionIndicator, opts)
+    } else if sim.selectedPC != nil {
+        opts.GeoM.Translate(sim.selectedPC.Position.X, sim.selectedPC.Position.Y)
+        screen.DrawImage(sim.selectionIndicator, opts)
+    }
 }
 
 func (sim Simulation) drawAcuite(screen *ebiten.Image) {
@@ -290,6 +355,22 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		)
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
 	}
+
+	y += 20
+
+	// Informações do computador selecionado
+	if sim.selectedPC != nil {
+		ebitenutil.DebugPrintAt(screen, "Selected Computer:", panelX+padding, y)
+		y += 20
+		pcInfo := fmt.Sprintf("  ID: %s\n  Position: (%.2f, %.2f)\n  Used: %t\n  Program : %s",
+			sim.selectedPC.Id,
+			sim.selectedPC.Position.X,
+			sim.selectedPC.Position.Y,
+			sim.selectedPC.Used,
+			sim.selectedPC.Programm,
+		)
+		ebitenutil.DebugPrintAt(screen, pcInfo, panelX+padding, y)
+	}
 }
 
 func (sim *Simulation) drawMap(screen *ebiten.Image) {
@@ -369,38 +450,41 @@ func (sim *Simulation) Update() error {
 				if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
 					cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
 					sim.selected = agent // Define o agente selecionado
+					sim.selectedPC = nil // Limpa o computador selecionado
+					sim.selectionIndicator = ebiten.NewImage(AgentImageSize, AgentImageSize)
+                sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
+                
+
 					break
 				}
 			}
+
+			for i := range sim.Computers {
+				pc := &sim.Computers[i]
+				// Verifica se o clique está dentro da área do computador
+				if cursorX >= int(pc.Position.X) && cursorX <= int(pc.Position.X+TileSize) &&
+					cursorY >= int(pc.Position.Y) && cursorY <= int(pc.Position.Y+TileSize) {
+						sim.selectedPC = pc
+						sim.selected = nil
+						sim.selectionIndicator = ebiten.NewImage(TileSize, TileSize)
+						sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
+					break
+				}
+			}
+
 		}
 
 		for i := range sim.agents {
-
 			if sim.agents[i].DialogTimer > 0 {
 				sim.agents[i].DialogTimer--
 				if sim.agents[i].DialogTimer == 0 {
 					sim.agents[i].ClearAction()
+					if sim.agents[i].UseComputer != nil {
+						log.Printf("Agent %s has finished using computer %s", sim.agents[i].Id, sim.agents[i].UseComputer.ID())
+						sim.agents[i].UseComputer.Used = false
+					}
+					sim.agents[i].Occupied = false
 				}
-			} else {
-				/*
-					if nearbyAgents, ok := sim.env.AgentProximity.Load(sim.agents[i].Id); ok {
-						log.Printf("Nearby agents of %s : %v", sim.agents[i].Id, nearbyAgents)
-					}
-
-				*/
-				/*
-					//sim.env.NearbyAgents(&ag)
-					switch sim.agents[i].CurrentAction {
-
-					case "Praying":
-						sim.agents[i].Pray()
-					case "Running":
-						sim.agents[i].Move()
-					case "Discuss":
-						//log.Printf("Agent %s is discussing", sim.agents[i].Id)
-						//sim.agents[i].Discuss()
-					}
-				*/
 			}
 		}
 	}
