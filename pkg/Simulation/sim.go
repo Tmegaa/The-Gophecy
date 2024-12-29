@@ -118,7 +118,6 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 
 func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
 	agentsImg := loadImage(AssetsPath + AgentImageFile)
-	agents := make([]ag.Agent, NumAgents)
 
 	validPositions := getValidSpawnPositions(carte, 1)
 
@@ -137,7 +136,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 
 	//i dont why we are creating agents like this and not using the function NewAgent
 	for i := 0; i < NumAgents; i++ {
-		env.AddAgent(*ag.NewAgent(
+		agt := ag.NewAgent(
 			env,
 			ag.IdAgent(fmt.Sprintf("Agent%d", i)),
 			rand.Float64(),
@@ -145,9 +144,11 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			validPositions[i],
 			make(chan ag.Message),
 			agentsImg,
-		))
+		)
+		// fmt.Println(agt.Id)
+		env.AddAgent(agt)
 	}
-	return agents
+	return env.Ags
 }
 
 func loadImage(path string) *ebiten.Image {

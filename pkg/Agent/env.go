@@ -37,8 +37,8 @@ func NewEnvironment(ags []Agent, carte carte.Carte, objs []InterfaceObjet) (env 
 	return &Environnement{Ags: ags, Objs: objs, Communication: make(chan Message, 100), NbrAgents: counter, Carte: carte, AgentProximity: &sync.Map{}}
 }
 
-func (env *Environnement) AddAgent(ag Agent) {
-	env.Ags = append(env.Ags, ag)
+func (env *Environnement) AddAgent(ag *Agent) {
+	env.Ags = append(env.Ags, *ag)
 
 	// Charger le nombre actuel d'agents de ce type
 	value, exists := env.NbrAgents.Load(ag.TypeAgt)
