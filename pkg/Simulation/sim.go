@@ -32,7 +32,9 @@ const (
 	NumStatues		= 1
 	AssetsPath      = "assets/images/"
 	MapsPath        = "assets/maps/"
-	AgentImageFile  = "ninja.png"
+	AgentBelieverImageFile  = "ninja.png"
+	AgentScepticImageFile   = "sceptic.png"
+	AgentNeutralImageFile   = "neutre.png"
 	TilemapImage    = "img.png"
 	TilemapJSONFile = "spawn.json"
 )
@@ -156,7 +158,7 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 }
 
 func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
-	agentsImg := loadImage(AssetsPath + AgentImageFile)
+	
 	agents := make([]ag.Agent, NumAgents)
 
 	validPositions := getValidSpawnPositions(carte, 1)
@@ -173,9 +175,22 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 	// 	agents[i] = *ag.NewAgent(&env, ag.IdAgent(fmt.Sprintf("Agent%d", i)), rand.Float64(), rand.Float64(), validPositions[i], rand.Float64(), make(map[ag.IdAgent]float64), make(map[ag.IdAgent]float64), rand.Float64(), []float64{rand.Float64(), rand.Float64()}, []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)], make(chan int), agentsImg)
 	// 	env.AddAgent(agents[i])
 	// }
+	
+	//default image
+	agentsImg := loadImage(AssetsPath + AgentBelieverImageFile)
 
 	//i dont why we are creating agents like this and not using the function NewAgent
 	for i := 0; i < NumAgents; i++ {
+		
+		TypeChoosen := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)]
+		if TypeChoosen == ag.Believer {
+			agentsImg = loadImage(AssetsPath + AgentBelieverImageFile)
+		} else if TypeChoosen == ag.Sceptic {
+			agentsImg = loadImage(AssetsPath + AgentScepticImageFile)
+		} else {
+			agentsImg = loadImage(AssetsPath + AgentNeutralImageFile)
+		}
+
 		agents[i] = ag.Agent{
 			Env:               env,
 			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
@@ -188,7 +203,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			PersonalParameter: rand.Float64(),
 			Poid_rel:          []float64{rand.Float64(), rand.Float64()},
 			Vivant:            true,
-			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
+			TypeAgt:           TypeChoosen,
 			SyncChan:          make(chan ag.Message),
 			Img:               agentsImg,
 			MoveTimer:         2,
