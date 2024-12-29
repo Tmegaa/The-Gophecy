@@ -1,0 +1,24 @@
+{ "columns":0,
+ "grid":
+    {
+     "height":1,
+     "orientation":"orthogonal",
+     "width":1
+    },
+ "margin":0,
+ "name":"objstatue",
+ "spacing":0,
+ "tilecount":1,
+ "tiledversion":"1.11.0",
+ "tileheight":72,
+ "tiles":[
+        {
+         "id":0,
+         "image":"..\/..\/objects\/map (36).png",
+         "imageheight":72,
+         "imagewidth":37
+        }],
+ "tilewidth":37,
+ "type":"tileset",
+ "version":"1.10"
+}

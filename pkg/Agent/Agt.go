@@ -60,9 +60,11 @@ type Agent struct {
 	DialogTimer       int
 	Occupied          bool
 	AgentProximity    []Agent
-	ComputerProximity []*Computer
+	ObjsProximity     []*InterfaceObjet
 	UseComputer       *Computer
 	LastComputer      *Computer
+	LastStatue        *Statue
+	TimeLastStatue    int
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
@@ -79,7 +81,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0), ComputerProximity: make([]*Computer, 0), UseComputer: nil, LastComputer: nil}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0), ObjsProximity: make([]*InterfaceObjet, 0), UseComputer: nil, LastComputer: nil, LastStatue: nil, TimeLastStatue: 999}
 }
 
 
@@ -133,7 +135,7 @@ func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
 	return false
 }
 
-func (ag *Agent) Percept(env *Environnement) ([]Agent, []*Computer) {
+func (ag *Agent) Percept(env *Environnement) ([]Agent, []*InterfaceObjet) {
 	env.RLock()
 	defer env.RUnlock()
 	msg := Message{Type: "Perception", Agent: ag}
@@ -144,10 +146,10 @@ func (ag *Agent) Percept(env *Environnement) ([]Agent, []*Computer) {
 		//log.Printf("Agent %v is perceiving", ag.AgentProximity)
 	}
 
-	// percept computers
-	ag.ComputerProximity =  env.NearbyObjects(ag)
+	// percept objs
+	ag.ObjsProximity =  env.NearbyObjects(ag)
 	
-	return nil, ag.ComputerProximity
+	return nil, ag.ObjsProximity
 }
 
 func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
@@ -161,98 +163,95 @@ func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
 	return priority
 }
 
-func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*Computer) string {
-	//TODO GESTION COMPUTER
-	env.Lock()
-	defer env.Unlock()
+func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*InterfaceObjet) string {
+    env.Lock()
+    defer env.Unlock()
 
-	if len(obj) > 0 {
-		//escolher um computador aleatório	
-		randomIndex := rand.Intn(len(obj))
-		// if ag.LastComputer == obj[randomIndex] {
-		// 	return "Move"
-		// }
-
-		if obj[randomIndex].Used {
-			return "Move"
-		}
-
-		switch obj[randomIndex].Programm {
-		case "Go":
-			if ag.TypeAgt == Believer {
-				return "Move"
-			} else if ag.TypeAgt == Neutral {
-				return "Move"
-			}else {
-				obj[randomIndex].Programm = "None"
-			}
-		case "None":
-			if ag.TypeAgt == Believer {
-				obj[randomIndex].Programm = "Go"
-			} else if ag.TypeAgt == Neutral {
-				return "Move"
-			}else {
-				return "Move"
-			}
-		}
-
-		obj[randomIndex].Used = true
-		ag.Occupied = true
-		ag.UseComputer = obj[randomIndex]
-		ag.LastComputer = obj[randomIndex]
-		return "Computer"
-	}
-
-	if len(nearbyAgents) > 0 {
-		//log.Printf("NNNNNearby agents %v", nearbyAgents)
-	}
-	//aucun agent à proximité
-	if len(nearbyAgents) == 0 {
-		//log.Printf("Agent %v has no nearby agents", nearbyAgents)
-		ag.ClearAction()
-		return "Move"
-	}
-	//TODO FONCTION SET PRIORITY
-	//priority := ag.SetPriority(nearbyAgents)
-	priority := nearbyAgents //for testing
-	for _, ag2 := range priority {
-		if !ag2.Occupied {
-			//si l'agent est du même type
-			//fmt.Printf("Agent %v, Agent2 %v", ag.TypeAgt, ag2.TypeAgt)
-			if ag.TypeAgt == ag2.TypeAgt {
-				switch {
-				case ag.TypeAgt == Sceptic:
-					if ag.Opinion == 0 && ag2.Opinion == 0 {
-						ag.ClearAction()
-						return "Move"
+    // Priorizar interação com objetos
+    if len(obj) > 0 {
+        for _, o := range obj {
+            switch concrete := (*o).(type) {
+            case *Computer:
+                if !concrete.Used {
+                    switch concrete.Programm {
+                    case "Go":
+                        if ag.TypeAgt == Sceptic {
+                            concrete.Programm = "None"
+                            return ag.useComputer(concrete)
+                        }
+                    case "None":
+                        if ag.TypeAgt == Believer {
+                            concrete.Programm = "Go"
+                            return ag.useComputer(concrete)
+                        }
+                    }
+                }
+            case *Statue:
+                switch ag.TypeAgt {
+                case Sceptic:
+                    continue
+                case Believer:
+					if ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 600 {
+                    return ag.Prayer(concrete)
 					}
-				case ag.TypeAgt == Believer:
-					if ag.Opinion == 1 && ag2.Opinion == 1 {
-						ag.ClearAction()
-						return "Move"
-					}
-				case ag.TypeAgt == Neutral:
-					if ag.Opinion == 0.5 && ag2.Opinion == 0.5 {
-						ag.ClearAction()
-						return "Move"
-					}
-				}
-			}
-			//si l'agent est d'un autre type
-			ag.SetAction("Discuss")
-			ag2.SetAction("Discuss")
-			ag.Occupied = true
-			ag2.Occupied = true
-			return "Discuss"
-		}
-		//gestion aléatoire entre attendre et bouger
-		if rand.Intn(2) == 0 {
-			return "Wait"
-		}
 
-	}
-	return "Move"
+                case Neutral:
+                    if rand.Float64() < 0.5 && (ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 350) {
+                        return ag.Prayer(concrete)
+                    }
+                }
+            }
+        }
+    }
+
+    // Interação com outros agentes
+    if len(nearbyAgents) > 0 {
+        for _, ag2 := range nearbyAgents {
+            if !ag2.Occupied {
+                if ag.shouldInteract(ag2) {
+                    return ag.interactWithAgent(ag2)
+                }
+            }
+        }
+    }
+
+    // Movimento padrão ou espera
+    if rand.Float64() < 0.8 {
+        return "Move"
+    }
+    return "Move"
 }
+
+func (ag *Agent) Prayer(statue *Statue) string {
+	ag.LastStatue = statue
+	ag.Occupied = true
+	ag.TimeLastStatue = 0
+	return "Pray"
+}
+
+func (ag *Agent) useComputer(computer *Computer) string {
+    computer.Used = true
+    ag.Occupied = true
+    ag.UseComputer = computer
+    ag.LastComputer = computer
+    return "Computer"
+}
+
+func (ag *Agent) shouldInteract(ag2 Agent) bool {
+    if ag.TypeAgt == ag2.TypeAgt {
+        return ag.Opinion != ag2.Opinion
+    }
+    return true
+}
+
+func (ag *Agent) interactWithAgent(ag2 Agent) string {
+    ag.SetAction("Discuss")
+    ag2.SetAction("Discuss")
+    ag.Occupied = true
+    ag2.Occupied = true
+    return "Discuss"
+}
+
 
 func (ag *Agent) Act(env *Environnement, choice string) {
 	if ag.CurrentAction != "Running" {
@@ -264,8 +263,10 @@ func (ag *Agent) Act(env *Environnement, choice string) {
 		ag.SendToEnv(Message{Type: "Move", Agent: ag})
 	
 	case "Computer":
-
 		ag.SetAction("Using Computer")
+
+	case "Pray":
+		ag.SetAction("Praying")
 
 	case "Discuss":
 		//ag.Discuter()
@@ -284,9 +285,6 @@ func (ag *Agent) ClearAction() {
 	ag.DialogTimer = 0
 }
 
-func (ag *Agent) Pray() {
-	ag.SetAction("Praying")
-}
 
 func (ag *Agent) Eat() {
 	ag.SetAction("Eating")

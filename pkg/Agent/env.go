@@ -75,8 +75,8 @@ func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
 
 }
 
-func (env *Environnement) NearbyObjects(ag *Agent) []*Computer {
-	nearbyObjects := make([]*Computer, 0)
+func (env *Environnement) NearbyObjects(ag *Agent) []*InterfaceObjet {
+	nearbyObjects := make([]*InterfaceObjet, 0)
 	pos := ag.AgtPosition()
 	var area ut.Rectangle
 	area.PositionDL.X = pos.X - ag.Acuite
@@ -84,22 +84,20 @@ func (env *Environnement) NearbyObjects(ag *Agent) []*Computer {
 	area.PositionUR.X = pos.X + ag.Acuite
 	area.PositionUR.Y = pos.Y - ag.Acuite
 
-	
+
+	//for PC
 	for _, pc := range env.Objs {
+		
 		PCposition := pc.ObjPosition()
 
 		if ut.IsInRectangle(PCposition, area) {
-
 			if pc.GetUse() && (ag.LastComputer == nil || pc.ID() != ag.LastComputer.ID()) {
 				continue
 			}
-
-			nearbyObjects = append(nearbyObjects, pc.(*Computer))	
+			nearbyObjects = append(nearbyObjects, &pc)
 		}
 	}
 
-	
-	
 	return nearbyObjects
 }
 
