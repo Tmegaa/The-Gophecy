@@ -3,6 +3,7 @@ package pkg
 import (
 	ut "Gophecy/pkg/Utilitaries"
 	"log"
+	"time"
 
 	"math/rand"
 
@@ -48,7 +49,7 @@ type Agent struct {
 	Charisme          map[IdAgent]float64 //influence d'un agent sur un autre
 	Relation          map[IdAgent]float64
 	PersonalParameter float64
-	Poid_rel          []float64
+	Poid_rel          map[IdAgent]float64
 	Vivant            bool
 	TypeAgt           TypeAgent
 	SubType           SubTypeAgent
@@ -65,11 +66,11 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, typeAgt TypeAgent, subTypeAgent SubTypeAgent, syncChan chan Message, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatif pour chaque agents
-	poid_rel := make([]float64, 0)
+	poid_rel := make(map[IdAgent]float64, 0)
 	personalCharisme := charisme[id]
-	for _, v := range charisme {
+	for i, v := range charisme {
 		char := v / personalCharisme
-		poid_rel = append(poid_rel, char)
+		poid_rel[i] = char
 	}
 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
@@ -107,7 +108,7 @@ func (ag *Agent) Start() {
 			}
 			ag.Act(env, choice)
 
-			//time.Sleep(1 * time.Second)
+			time.Sleep(10 * time.Millisecond)
 			//ag.SyncChan <- step
 		}
 
@@ -160,8 +161,12 @@ func (ag *Agent) Percept(env *Environnement) (nearbyAgents []*Agent) {
 	}
 */
 func (ag *Agent) Percept(env *Environnement) []Agent {
+	//TODO ObjectProximity
+
+	//verifier si un agent ne perçoit pas un agent qui n'est plus là (temporalité)
 	env.RLock()
 	defer env.RUnlock()
+
 	msg := Message{Type: "Perception", Agent: ag}
 	ag.SendToEnv(msg)
 	receive := <-ag.SyncChan
@@ -185,6 +190,9 @@ func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
 }
 
 func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent) string {
+	//Follow
+	//Hack
+
 	//TODO GESTION COMPUTER
 	env.Lock()
 	defer env.Unlock()
@@ -247,7 +255,14 @@ func (ag *Agent) Act(env *Environnement, choice string) {
 		ag.SendToEnv(Message{Type: "Move", Agent: ag})
 
 	case "Discuss":
-		//ag.Discuter()
+		for i := range env.Ags {
+			if env.Ags[i].ID() == ag.AgentProximity[0].ID() {
+				ag2 := env.Ags[i]
+				ag.SendToEnv(Message{Type: "Discuss", Agent: ag, Cible: ag2})
+			}
+		}
+		log.Printf("Agent %s can't discuss with %s", ag.Id, ag.AgentProximity[0].Id)
+
 	case "Wait":
 		ag.ClearAction()
 	}

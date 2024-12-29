@@ -88,7 +88,7 @@ func initializeWindow() {
 }
 
 func createEnvironment(carte carte.Carte, NumAgents int) ag.Environnement {
-	return *ag.NewEnvironment(make([]ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
+	return *ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
 func loadMap() *carte.Carte {
@@ -147,7 +147,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			Charisme:          make(map[ag.IdAgent]float64),
 			Relation:          make(map[ag.IdAgent]float64),
 			PersonalParameter: rand.Float64(),
-			Poid_rel:          []float64{rand.Float64(), rand.Float64()},
+			Poid_rel:          map[ag.IdAgent]float64{},
 			Vivant:            true,
 			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
 			SyncChan:          make(chan ag.Message),
@@ -156,7 +156,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			CurrentAction:     "Praying",
 			DialogTimer:       2,
 		}
-		env.AddAgent(agents[i])
+		env.AddAgent(&agents[i])
 	}
 	return agents
 }

@@ -40,3 +40,5 @@ func (c *Computer) ID() IdObjet {
 func NewComputer(env *Environnement, id IdObjet, pos ut.Position) *Computer {
 	return &Computer{Env: env, Id: id, Position: pos, Programm: "None", Used: false}
 }
+
+
