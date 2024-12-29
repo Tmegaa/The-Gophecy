@@ -11,7 +11,6 @@ import (
 	"image/color"
 	"log"
 	"math/rand"
-	"strings"
 	"sync"
 	"time"
 
@@ -573,14 +572,11 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	displayText := agent.CurrentAction
 	if agent.CurrentAction == "Discussing" {
 		// Adiciona um indicador do tipo de agente na discussão
-		displayText = fmt.Sprintf("%s\n(%s)", agent.CurrentAction, agent.TypeAgt)
+		displayText = fmt.Sprintf("%s (%s)", agent.CurrentAction, agent.TypeAgt)
 	}
 
-	// Desenha o texto da ação (ajustado para duas linhas se necessário)
-	lines := strings.Split(displayText, "\n")
-	for i, line := range lines {
-		text.Draw(screen, line, sim.dialogFont, x+5, y+15+(i*15), color.Black)
-	}
+	// Desenha o texto da ação
+	text.Draw(screen, displayText, sim.dialogFont, x+5, y+20, color.Black)
 
 	// Adiciona uma barra de progresso para o DialogTimer
 	if agent.DialogTimer > 0 {
@@ -612,6 +608,51 @@ func (sim *Simulation) Update() error {
 	case <-sim.ctx.Done():
 		return ebiten.Termination
 	default:
+		//Detection des nearby agents
+
+		//log.Printf("Agents proches détectés: %v", sim.env.AgentProximity)
+		// Posição do cursor
+		cursorX, cursorY := ebiten.CursorPosition()
+
+		// Detecte le clic
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			for i := range sim.agents {
+				agent := &sim.agents[i]
+				// Vérifie si le clic est à l'intérieur de la zone de l'agent
+				if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
+					cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
+					sim.selected = agent // Définit l'agent sélectionné
+					sim.selectedPC = nil // Efface l'ordinateur sélectionné
+					sim.selectionIndicator = ebiten.NewImage(AgentImageSize, AgentImageSize)
+                sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
+                
+
+					break
+				}
+			}
+
+			for i := range sim.objets {
+				if sim.objets[i].GetType() != ag.ComputerType {
+					continue
+				}
+				
+				pc := &sim.objets[i]
+
+				// Vérifie si le clic est à l'intérieur de la zone de l'ordinateur
+				if computer, ok := (*pc).(*ag.Computer); ok {
+					if cursorX >= int(computer.ObjPosition().X) && cursorX <= int(computer.ObjPosition().X+TileSize) &&
+						cursorY >= int(computer.ObjPosition().Y) && cursorY <= int(computer.ObjPosition().Y+TileSize) {
+							sim.selectedPC = computer
+							sim.selected = nil
+							sim.selectionIndicator = ebiten.NewImage(TileSize, TileSize)
+							sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
+						break
+					}
+				}
+			}
+
+		}
+
 		for i := range sim.agents {
 			if sim.agents[i].TimeLastStatue >= 0 && sim.agents[i].TypeAgt == ag.Believer {
 				sim.agents[i].TimeLastStatue++
@@ -621,9 +662,10 @@ func (sim *Simulation) Update() error {
 				if sim.agents[i].DialogTimer == 0 {
 					sim.agents[i].ClearAction()
 					if sim.agents[i].UseComputer != nil {
+						log.Printf("Agent %s has finished using computer %s", sim.agents[i].Id, sim.agents[i].UseComputer.ID())
 						sim.agents[i].UseComputer.Used = false
-						sim.agents[i].UseComputer = nil
 					}
+					
 					sim.agents[i].Occupied = false
 				}
 			}
