@@ -137,26 +137,15 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 
 	//i dont why we are creating agents like this and not using the function NewAgent
 	for i := 0; i < NumAgents; i++ {
-		agents[i] = ag.Agent{
-			Env:               env,
-			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
-			Velocite:          rand.Float64(),
-			Acuite:            30.0, //float64(rand.Intn(10)),
-			Position:          validPositions[i],
-			Opinion:           rand.Float64(),
-			Charisme:          make(map[ag.IdAgent]float64),
-			Relation:          make(map[ag.IdAgent]float64),
-			PersonalParameter: rand.Float64(),
-			Poid_rel:          []float64{rand.Float64(), rand.Float64()},
-			Vivant:            true,
-			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
-			SyncChan:          make(chan ag.Message),
-			Img:               agentsImg,
-			MoveTimer:         2,
-			CurrentAction:     "Praying",
-			DialogTimer:       2,
-		}
-		env.AddAgent(agents[i])
+		env.AddAgent(*ag.NewAgent(
+			env,
+			ag.IdAgent(fmt.Sprintf("Agent%d", i)),
+			rand.Float64(),
+			30.0, //float64(rand.Intn(10)),
+			validPositions[i],
+			make(chan ag.Message),
+			agentsImg,
+		))
 	}
 	return agents
 }

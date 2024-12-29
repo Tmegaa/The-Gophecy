@@ -46,12 +46,14 @@ type Agent struct {
 	Position          ut.Position
 	Opinion           float64
 	Charisme          map[IdAgent]float64 //influence d'un agent sur un autre
-	Relation          map[IdAgent]float64
+	Poids_abs 	  	  map[IdAgent]float64
+	// Charisme          map[IdAgent]float64 //influence d'un agent sur un autre
+	// Relation          map[IdAgent]float64
+	Poids_rel          map[IdAgent]float64
 	PersonalParameter float64
-	Poid_rel          []float64
 	Vivant            bool
 	TypeAgt           TypeAgent
-	SubType           SubTypeAgent
+	// SubType           SubTypeAgent
 	SyncChan          chan Message
 	Img               *ebiten.Image
 	MoveTimer         int
@@ -61,21 +63,55 @@ type Agent struct {
 	AgentProximity    []Agent
 }
 
-func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
-	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, typeAgt TypeAgent, subTypeAgent SubTypeAgent, syncChan chan Message, img *ebiten.Image) *Agent {
-
-	//calcul des poids relatif pour chaque agents
-	poid_rel := make([]float64, 0)
-	personalCharisme := charisme[id]
-	for _, v := range charisme {
-		char := v / personalCharisme
-		poid_rel = append(poid_rel, char)
+func NewAgent(
+			env *Environnement, 
+			id IdAgent, 
+			velocite float64, 
+			acuite float64, 
+			position ut.Position,
+			syncChan chan Message, 
+			img *ebiten.Image) *Agent {
+	
+	// le paramètre personalParameter est défini aléatoirement
+	personalParameter := rand.Float64()
+	// on initialise les variable poids absolus et relatifs de l'agent que l'on vient de créer
+	poids_abs := map[IdAgent]float64{}
+	poids_rel := map[IdAgent]float64{}
+	poids_abs[id] = rand.Float64() // poids absolu de l'agent sur lui-même
+	poids_rel[id] = poids_abs[id] / (poids_abs[id] + poids_abs[id]) // poids relatif de l'agent sur lui-même (toujours égal à 0.5)
+	for _, v := range env.Ags {
+		// pour chaque agent déja exisatant de l'environnement, on affect un poids absolu aléatoire et on calcule le poids relatif
+		poids_abs[v.Id] = rand.Float64()
+		poids_rel[v.Id] = poids_abs[v.Id] / (poids_abs[id] + poids_abs[v.Id]) 
+		
+		// on affecte les poids absolu et relatif de l'agent que l'on vient de créer à chaque agent déja existant
+		v.Poids_abs[id] = rand.Float64()
+		v.Poids_rel[id] = v.Poids_abs[id] / (v.Poids_abs[id] + poids_abs[id])
 	}
-
-	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
-		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
-		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
+	// L'opnion de départ est définie aléatoirement
+	opinion := rand.Float64()
+	// on calcule le type de l'agent en fonction de son opinion
+	typeagt := ComputeTypeAgt(opinion)
+	
+	return &Agent{
+		Env: env, 
+		Id: id,
+		Velocite: velocite, 
+		Acuite: acuite,
+		Position: position, 
+		Opinion: opinion, 
+		PersonalParameter: personalParameter, 
+		Poids_abs: poids_abs,
+		Poids_rel: poids_rel,
+		Vivant: true, 
+		TypeAgt: typeagt, 
+		SyncChan: syncChan, 
+		Img: img, 
+		MoveTimer: 2, 
+		CurrentAction: "Praying", 
+		DialogTimer: 2, 
+		Occupied: false, 
+		AgentProximity: make([]Agent, 0)}
 }
 
 func (ag *Agent) ID() IdAgent {
@@ -84,6 +120,24 @@ func (ag *Agent) ID() IdAgent {
 
 func (ag *Agent) AgtPosition() ut.Position {
 	return ag.Position
+}
+
+func ComputeTypeAgt(opinion float64) TypeAgent {
+	var typeAgt TypeAgent
+	if opinion < 0.33 {
+		typeAgt = Sceptic
+	}
+	if opinion > 0.66 {
+		typeAgt = Believer
+	}
+	if opinion >= 0.33 && opinion <= 0.66 {
+		typeAgt = Neutral
+	}
+	return typeAgt
+}
+
+func setTypeAgt(agt *Agent) {
+	agt.TypeAgt = ComputeTypeAgt(agt.Opinion)
 }
 
 func (ag *Agent) Start() {
