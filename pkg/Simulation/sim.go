@@ -11,6 +11,7 @@ import (
 	"image/color"
 	"log"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,6 +38,8 @@ const (
 	AgentNeutralImageFile   = "neutre.png"
 	TilemapImage    = "img.png"
 	TilemapJSONFile = "spawn.json"
+	DiscussionBubbleWidth  = 100
+	DiscussionBubbleHeight = 40
 )
 
 type Simulation struct {
@@ -435,6 +438,20 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			sim.selected.TimeLastStatue,
 		)
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
+
+		// Adiciona informações sobre relações
+		y += 40
+		ebitenutil.DebugPrintAt(screen, "Relations:", panelX+padding, y)
+		y += 20
+		for otherId, relation := range sim.selected.Relation {
+			ebitenutil.DebugPrintAt(
+				screen,
+				fmt.Sprintf("  %s: %.2f", otherId, relation),
+				panelX+padding,
+				y,
+			)
+			y += 15
+		}
 	}
 
 	// Informations de l'ordinateur sélectionné
@@ -468,11 +485,48 @@ func (sim *Simulation) drawMap(screen *ebiten.Image) {
 
 func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
+	
+	// Primeiro, desenha as linhas de conexão entre agentes em discussão
 	for _, agent := range sim.agents {
+		if agent.CurrentAction == "Discussing" {
+			// Procura outros agentes próximos que também estão discutindo
+			for _, other := range agent.AgentProximity {
+				if other.CurrentAction == "Discussing" {
+					// Desenha uma linha conectando os agentes
+					startX := agent.Position.X + float64(AgentImageSize)/2
+					startY := agent.Position.Y + float64(AgentImageSize)/2
+					endX := other.Position.X + float64(AgentImageSize)/2
+					endY := other.Position.Y + float64(AgentImageSize)/2
+
+					// Escolhe a cor da linha baseado nos tipos dos agentes
+					lineColor := color.RGBA{150, 150, 150, 255}
+					vector.StrokeLine(
+						screen,
+						float32(startX),
+						float32(startY),
+						float32(endX),
+						float32(endY),
+						1,
+						lineColor,
+						false,
+					)
+				}
+			}
+		}
+	}
+
+	// Depois desenha os agentes
+	for _, agent := range sim.agents {
+		opts.GeoM.Reset()
 		opts.GeoM.Translate(agent.Position.X, agent.Position.Y)
+		
+		// Adiciona um efeito visual para agentes em discussão
+		if agent.CurrentAction == "Discussing" {
+			opts.ColorM.Scale(1.2, 1.2, 1.2, 1) // Torna o agente levemente mais brilhante
+		}
+		
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
 		screen.DrawImage(subImg, &opts)
-		opts.GeoM.Reset()
 
 		sim.drawDialogBox(screen, agent)
 	}
@@ -483,19 +537,64 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 		return
 	}
 
-	dialogWidth := 100
-	dialogHeight := 30
+	dialogWidth := DiscussionBubbleWidth
+	dialogHeight := DiscussionBubbleHeight
 	x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
 	y := int(agent.Position.Y) - dialogHeight - 5
 
-	// Dessine le fond de la boîte de dialogue
-	vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), color.RGBA{255, 255, 255, 200}, false)
+	// Desenha o fundo da caixa de diálogo
+	bgColor := color.RGBA{255, 255, 255, 200}
+	
+	// Muda a cor do fundo baseado na ação
+	switch agent.CurrentAction {
+	case "Discussing":
+		// Cor diferente para discussão
+		switch agent.TypeAgt {
+		case ag.Believer:
+			bgColor = color.RGBA{200, 230, 255, 200} // Azul claro
+		case ag.Sceptic:
+			bgColor = color.RGBA{255, 200, 200, 200} // Vermelho claro
+		case ag.Neutral:
+			bgColor = color.RGBA{200, 255, 200, 200} // Verde claro
+		}
+	case "Praying":
+		bgColor = color.RGBA{255, 255, 200, 200} // Amarelo claro
+	case "Using Computer":
+		bgColor = color.RGBA{200, 200, 255, 200} // Roxo claro
+	}
 
-	// Dessine la bordure de la boîte de dialogue
+	// Desenha o fundo da caixa de diálogo
+	vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), bgColor, false)
+
+	// Desenha a borda da caixa de diálogo
 	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
-	// Écrit le texte de l'action
-	text.Draw(screen, agent.CurrentAction, sim.dialogFont, x+5, y+20, color.Black)
+	// Prepara o texto baseado na ação
+	displayText := agent.CurrentAction
+	if agent.CurrentAction == "Discussing" {
+		// Adiciona um indicador do tipo de agente na discussão
+		displayText = fmt.Sprintf("%s\n(%s)", agent.CurrentAction, agent.TypeAgt)
+	}
+
+	// Desenha o texto da ação (ajustado para duas linhas se necessário)
+	lines := strings.Split(displayText, "\n")
+	for i, line := range lines {
+		text.Draw(screen, line, sim.dialogFont, x+5, y+15+(i*15), color.Black)
+	}
+
+	// Adiciona uma barra de progresso para o DialogTimer
+	if agent.DialogTimer > 0 {
+		progressWidth := float32(dialogWidth-10) * (float32(agent.DialogTimer) / 180.0)
+		vector.DrawFilledRect(
+			screen,
+			float32(x+5),
+			float32(y+dialogHeight-10),
+			progressWidth,
+			5,
+			color.RGBA{100, 100, 100, 200},
+			false,
+		)
+	}
 }
 
 func (sim *Simulation) drawColliders(screen *ebiten.Image) {
@@ -513,51 +612,6 @@ func (sim *Simulation) Update() error {
 	case <-sim.ctx.Done():
 		return ebiten.Termination
 	default:
-		//Detection des nearby agents
-
-		//log.Printf("Agents proches détectés: %v", sim.env.AgentProximity)
-		// Posição do cursor
-		cursorX, cursorY := ebiten.CursorPosition()
-
-		// Detecte le clic
-		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			for i := range sim.agents {
-				agent := &sim.agents[i]
-				// Vérifie si le clic est à l'intérieur de la zone de l'agent
-				if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
-					cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
-					sim.selected = agent // Définit l'agent sélectionné
-					sim.selectedPC = nil // Efface l'ordinateur sélectionné
-					sim.selectionIndicator = ebiten.NewImage(AgentImageSize, AgentImageSize)
-                sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
-                
-
-					break
-				}
-			}
-
-			for i := range sim.objets {
-				if sim.objets[i].GetType() != ag.ComputerType {
-					continue
-				}
-				
-				pc := &sim.objets[i]
-
-				// Vérifie si le clic est à l'intérieur de la zone de l'ordinateur
-				if computer, ok := (*pc).(*ag.Computer); ok {
-					if cursorX >= int(computer.ObjPosition().X) && cursorX <= int(computer.ObjPosition().X+TileSize) &&
-						cursorY >= int(computer.ObjPosition().Y) && cursorY <= int(computer.ObjPosition().Y+TileSize) {
-							sim.selectedPC = computer
-							sim.selected = nil
-							sim.selectionIndicator = ebiten.NewImage(TileSize, TileSize)
-							sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
-						break
-					}
-				}
-			}
-
-		}
-
 		for i := range sim.agents {
 			if sim.agents[i].TimeLastStatue >= 0 && sim.agents[i].TypeAgt == ag.Believer {
 				sim.agents[i].TimeLastStatue++
@@ -567,8 +621,8 @@ func (sim *Simulation) Update() error {
 				if sim.agents[i].DialogTimer == 0 {
 					sim.agents[i].ClearAction()
 					if sim.agents[i].UseComputer != nil {
-						log.Printf("Agent %s has finished using computer %s", sim.agents[i].Id, sim.agents[i].UseComputer.ID())
 						sim.agents[i].UseComputer.Used = false
+						sim.agents[i].UseComputer = nil
 					}
 					sim.agents[i].Occupied = false
 				}

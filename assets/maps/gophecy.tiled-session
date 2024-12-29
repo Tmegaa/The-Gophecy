@@ -12,9 +12,9 @@
     "fileStates": {
         "spawn.json": {
             "scale": 0.75,
-            "selectedLayer": 2,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 652.6666666666667,
+                "x": 572.6666666666666,
                 "y": 650.6666666666666
             }
         },
@@ -57,7 +57,9 @@
             "scaleInEditor": 1
         },
         "tilesets/objstatue.json": {
-            "dynamicWrapping": true
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         }
     },
     "frame.defaultDuration": 100,
@@ -71,10 +73,12 @@
         "spawn.json",
         "tilesets/img.json",
         "tilesets/obj.json",
-        "tilesets/objcomputers.json"
+        "tilesets/objcomputers.json",
+        "tilesets/objstatue.json"
     ],
     "project": "gophecy.tiled-project",
     "recentFiles": [
+        "tilesets/objstatue.json",
         "tilesets/objcomputers.json",
         "tilesets/obj.json",
         "tilesets/img.json",
