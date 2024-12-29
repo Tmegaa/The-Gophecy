@@ -65,6 +65,9 @@ type Agent struct {
 	LastComputer      *Computer
 	LastStatue        *Statue
 	TimeLastStatue    int
+	HeatMap           *VisitationMap
+	CurrentWaypoint   *ut.Position // Ponto atual de patrulha para agentes Neutral
+	MovementStrategy  MovementStrategy
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
@@ -81,7 +84,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0), ObjsProximity: make([]*InterfaceObjet, 0), UseComputer: nil, LastComputer: nil, LastStatue: nil, TimeLastStatue: 999}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0), ObjsProximity: make([]*InterfaceObjet, 0), UseComputer: nil, LastComputer: nil, LastStatue: nil, TimeLastStatue: 999, CurrentWaypoint: nil}
 }
 
 
@@ -167,7 +170,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*Int
     env.Lock()
     defer env.Unlock()
 
-    // Priorizar interação com objetos
+	// Prioriser l'interaction avec les objets
     if len(obj) > 0 {
         for _, o := range obj {
             switch concrete := (*o).(type) {
@@ -204,7 +207,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*Int
         }
     }
 
-    // Interação com outros agentes
+	// Interagir avec d'autres agents
     if len(nearbyAgents) > 0 {
         for _, ag2 := range nearbyAgents {
             if !ag2.Occupied {
@@ -215,7 +218,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*Int
         }
     }
 
-    // Movimento padrão ou espera
+	// Mouvement par défaut ou attente
     if rand.Float64() < 0.8 {
         return "Move"
     }

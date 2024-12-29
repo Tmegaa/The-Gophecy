@@ -65,7 +65,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	carte := loadMap()
 	env := createEnvironment(*carte, config.NumAgents)
 	obj := loadObjects(&env, carte)
-	agents := createAgents(&env, carte, config.NumAgents)
+	agents := createAgents(&env, carte, config)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
 	if err != nil {
@@ -79,7 +79,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 		env:         env,
 		agents:      agents,
 		objets:      obj,
-		maxStep:     10, // Você pode adicionar isso à configuração se desejar
+		maxStep:     10,
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
 		carte:       *carte,
@@ -111,7 +111,7 @@ func loadMap() *carte.Carte {
 	computers := generateComputers(tilemapJSON, tilesets)
 	statues :=  generateStatues(tilemapJSON, tilesets)
 
-	// fazer gerate computer.
+	// générer des ordinateurs.
 	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders, computers, statues)
 }
 
@@ -157,13 +157,15 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 	return validPositions
 }
 
-func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
+func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []ag.Agent {
 	
-	agents := make([]ag.Agent, NumAgents)
+	agents := make([]ag.Agent, config.NumAgents)
 
 	validPositions := getValidSpawnPositions(carte, 1)
+	visitationMap := ag.NewVisitationMap(validPositions)
 
-	if len(validPositions) < NumAgents {
+
+	if len(validPositions) < config.NumAgents {
 		log.Fatalf("Not enough valid spawn positions for all agents")
 	}
 
@@ -171,7 +173,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
 	})
 
-	// for i := 0; i < NumAgents; i++ {
+	// for i := 0; i < config.NumAgents; i++ {
 	// 	agents[i] = *ag.NewAgent(&env, ag.IdAgent(fmt.Sprintf("Agent%d", i)), rand.Float64(), rand.Float64(), validPositions[i], rand.Float64(), make(map[ag.IdAgent]float64), make(map[ag.IdAgent]float64), rand.Float64(), []float64{rand.Float64(), rand.Float64()}, []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)], make(chan int), agentsImg)
 	// 	env.AddAgent(agents[i])
 	// }
@@ -180,14 +182,20 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 	agentsImg := loadImage(AssetsPath + AgentBelieverImageFile)
 
 	//i dont why we are creating agents like this and not using the function NewAgent
-	for i := 0; i < NumAgents; i++ {
-		
+	for i := 0; i < config.NumAgents; i++ {
 		TypeChoosen := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)]
-		if TypeChoosen == ag.Believer {
+		
+		// Définir la stratégie de mouvement basée sur le type d'agent
+		var strategy ag.MovementStrategy
+		switch TypeChoosen {
+		case ag.Believer:
+			strategy = config.BelieverMovement
 			agentsImg = loadImage(AssetsPath + AgentBelieverImageFile)
-		} else if TypeChoosen == ag.Sceptic {
+		case ag.Sceptic:
+			strategy = config.ScepticMovement
 			agentsImg = loadImage(AssetsPath + AgentScepticImageFile)
-		} else {
+		case ag.Neutral:
+			strategy = config.NeutralMovement
 			agentsImg = loadImage(AssetsPath + AgentNeutralImageFile)
 		}
 
@@ -214,7 +222,8 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			ObjsProximity:     make([]*ag.InterfaceObjet, 0),
 			UseComputer:       nil, //Using computer x
 			LastComputer:      nil, //Last computer used
-
+			HeatMap:           visitationMap,
+			MovementStrategy:  strategy,
 		}
 		env.AddAgent(&agents[i])
 	}
@@ -299,7 +308,7 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 }
 
 func (sim *Simulation) Draw(screen *ebiten.Image) {
-	// Desenha o fundo e os agentesrgba(57,61,125,255)
+	
 	screen.Fill(color.RGBA{57, 61, 125, 255})
 	sim.drawMap(screen)
 	sim.drawAgents(screen)
@@ -364,21 +373,21 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	panelWidth, panelHeight := 240, WindowHeight-20
 	padding := 10
 
-	// Desenha o painel de fundo
+	// Dessine le panneau de fond
 	vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
 
-	// Título do painel
+	// Titre du panneau
 	ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
 
 	y := panelY + 30
 
-	// Informações da simulação
+	// Informations de la simulation
 	elapsed := time.Since(sim.start)
 	simInfo := fmt.Sprintf("Elapsed: %s", elapsed.Round(time.Second))
 	ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
 	y += 40
 
-	// Contagem de agentes por tipo
+	// Comptage des agents par type
 	ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
 	y += 20
 	agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
@@ -389,7 +398,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	}
 	y += 20
 
-	// Contagem de computadores por programe None or Go 
+	// Comptage des ordinateurs par programme None ou Go
 	ebitenutil.DebugPrintAt(screen, "Computer Count:", panelX+padding, y)
 	y += 20
 	computerTypes := []string{"None", "Go"}
@@ -410,7 +419,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	y += 20
 	
 
-	// Informações do agente selecionado
+	// Informations de l'agent sélectionné
 	if sim.selected != nil {
 		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
 		y += 20
@@ -428,7 +437,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
 	}
 
-	// Informações do computador selecionado
+	// Informations de l'ordinateur sélectionné
 	if sim.selectedPC != nil {
 		ebitenutil.DebugPrintAt(screen, "Selected Computer:", panelX+padding, y)
 		y += 20
@@ -479,13 +488,13 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
 	y := int(agent.Position.Y) - dialogHeight - 5
 
-	// Desenha o fundo da caixa de diálogo
+	// Dessine le fond de la boîte de dialogue
 	vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), color.RGBA{255, 255, 255, 200}, false)
 
-	// Desenha a borda da caixa de diálogo
+	// Dessine la bordure de la boîte de dialogue
 	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
-	// Escreve o texto da ação
+	// Écrit le texte de l'action
 	text.Draw(screen, agent.CurrentAction, sim.dialogFont, x+5, y+20, color.Black)
 }
 
@@ -510,15 +519,15 @@ func (sim *Simulation) Update() error {
 		// Posição do cursor
 		cursorX, cursorY := ebiten.CursorPosition()
 
-		// Detecta clique
+		// Detecte le clic
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			for i := range sim.agents {
 				agent := &sim.agents[i]
-				// Verifica se o clique está dentro da área do agente
+				// Vérifie si le clic est à l'intérieur de la zone de l'agent
 				if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
 					cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
-					sim.selected = agent // Define o agente selecionado
-					sim.selectedPC = nil // Limpa o computador selecionado
+					sim.selected = agent // Définit l'agent sélectionné
+					sim.selectedPC = nil // Efface l'ordinateur sélectionné
 					sim.selectionIndicator = ebiten.NewImage(AgentImageSize, AgentImageSize)
                 sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
                 
@@ -534,7 +543,7 @@ func (sim *Simulation) Update() error {
 				
 				pc := &sim.objets[i]
 
-				// Verifica se o clique está dentro da área do computador
+				// Vérifie si le clic est à l'intérieur de la zone de l'ordinateur
 				if computer, ok := (*pc).(*ag.Computer); ok {
 					if cursorX >= int(computer.ObjPosition().X) && cursorX <= int(computer.ObjPosition().X+TileSize) &&
 						cursorY >= int(computer.ObjPosition().Y) && cursorY <= int(computer.ObjPosition().Y+TileSize) {
@@ -570,7 +579,7 @@ func (sim *Simulation) Update() error {
 }
 
 func (sim *Simulation) Run() error {
-	defer sim.cancel() // Ensure context is canceled when Run() exits
+	defer sim.cancel()
 
 	go sim.env.Listen()
 	go func() {

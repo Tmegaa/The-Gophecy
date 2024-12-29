@@ -1,5 +1,7 @@
 package utils
 
+import "math"
+
 type Position struct {
 	X  float64
 	Y  float64
@@ -13,7 +15,7 @@ type Rectangle struct {
 }
 
 func IsInRectangle(pos Position, area Rectangle) bool {
-	// Calcula o centro do agente
+	// Calculate the center of the agent
 	centerX := pos.X + 16/2
 	centerY := pos.Y + 16/2
 
@@ -32,3 +34,6 @@ type Direction struct {
 	direction []UniqueDirection
 }
 
+func Distance(p1, p2 Position) float64 {
+	return math.Sqrt(math.Pow(p1.X-p2.X, 2) + math.Pow(p1.Y-p2.Y, 2))
+}
