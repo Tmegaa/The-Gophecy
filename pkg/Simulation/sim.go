@@ -28,7 +28,7 @@ const (
 	AgentImageSize         = 16
 	WindowWidth            = 1920
 	WindowHeight           = 1080
-	NumComputers           = 2
+	NumComputers           = 6
 	NumStatues             = 1
 	AssetsPath             = "assets/images/"
 	MapsPath               = "assets/maps/"
