@@ -50,7 +50,7 @@ type Agent struct {
 	Charisme          map[IdAgent]float64 // influence d'un agent sur un autre
 	Relation          map[IdAgent]float64
 	PersonalParameter float64
-	Poids_rel         map[IdAgent]float64
+	Poids_rel         map[IdAgent]ut.Pair
 	Poids_abs         map[IdAgent]float64
 	Vivant            bool
 	TypeAgt           TypeAgent
@@ -92,7 +92,7 @@ func getRandomSubType(typeAgt TypeAgent) SubTypeAgent {
 			return Converter
 		}
 		return Pirate
-	
+
 	case Sceptic:
 		// Para Sceptic: 60% Pirate, 40% Converter
 		if rand.Float64() < 0.6 {
@@ -105,36 +105,18 @@ func getRandomSubType(typeAgt TypeAgent) SubTypeAgent {
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
-	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, 
+	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64,
 	typeAgt TypeAgent, syncChan chan Message, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatif pour chaque agents
-	poids_rel := make(map[IdAgent]float64, 0)
+	poids_rel := make(map[IdAgent]ut.Pair, 0)
 	poids_abs := make(map[IdAgent]float64, 0)
-	min := 0.01
-	max := 1.0
-
-	if len(env.Ags) == 0 {
-		poids_abs[id] = min + rand.Float64()*(max-min)
-		poids_rel[id] = poids_abs[id] / (poids_abs[id] + poids_abs[id])
-	} else {
-
-		for _, v := range env.Ags {
-			// pour chaque agent déja exisatant de l'environnement, on affect un poids absolu aléatoire et on calcule le poids relatif
-			poids_abs[v.Id] = min + rand.Float64()*(max-min)
-			poids_rel[v.Id] = poids_abs[v.Id] / (poids_abs[id] + poids_abs[v.Id])
-
-			// on affecte les poids absolu et relatif de l'agent que l'on vient de créer à chaque agent déja existant
-			v.Poids_abs[id] = min + rand.Float64()*(max-min)
-			v.Poids_rel[id] = v.Poids_abs[id] / (v.Poids_abs[id] + poids_abs[id])
+	/*
+		personalCharisme := charisme[id]
+		for i, v := range charisme {
+			char := v / personalCharisme
 		}
-	}
-	personalCharisme := charisme[id]
-	for i, v := range charisme {
-		char := v / personalCharisme
-		poids_rel[i] = char
-	}
-
+	*/
 	// Determina o subtipo baseado no tipo do agente
 	subType := getRandomSubType(typeAgt)
 
@@ -142,35 +124,35 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	log.Printf("New agent created - ID: %s, Type: %s, SubType: %s", id, typeAgt, subType)
 
 	return &Agent{
-		Env: env,
-		Id: id,
-		Velocite: velocite,
-		Acuite: acuite,
-		Position: position,
-		Opinion: opinion,
-		Charisme: charisme,
-		Relation: relation,
+		Env:               env,
+		Id:                id,
+		Velocite:          velocite,
+		Acuite:            acuite,
+		Position:          position,
+		Opinion:           opinion,
+		Charisme:          charisme,
+		Relation:          relation,
 		PersonalParameter: personalParameter,
-		Poids_rel: poids_rel,
-		Poids_abs: poids_abs,
-		Vivant: true,
-		TypeAgt: typeAgt,
-		SubType: subType,  // Usando o subtipo determinado
-		SyncChan: syncChan,
-		Img: img,
-		MoveTimer: 60,
-		CurrentAction: "Running",
-		DialogTimer: 10,
-		Occupied: false,
-		AgentProximity: make([]*Agent, 0),
-		ObjsProximity: make([]*InterfaceObjet, 0),
-		UseComputer: nil,
-		LastComputer: nil,
-		LastStatue: nil,
-		TimeLastStatue: 999,
-		CurrentWaypoint: nil,
-		LastTalkedTo: make([]*Agent, 0),
-		MaxLastTalked: 3,
+		Poids_rel:         poids_rel,
+		Poids_abs:         poids_abs,
+		Vivant:            true,
+		TypeAgt:           typeAgt,
+		SubType:           subType, // Usando o subtipo determinado
+		SyncChan:          syncChan,
+		Img:               img,
+		MoveTimer:         60,
+		CurrentAction:     "Running",
+		DialogTimer:       10,
+		Occupied:          false,
+		AgentProximity:    make([]*Agent, 0),
+		ObjsProximity:     make([]*InterfaceObjet, 0),
+		UseComputer:       nil,
+		LastComputer:      nil,
+		LastStatue:        nil,
+		TimeLastStatue:    999,
+		CurrentWaypoint:   nil,
+		LastTalkedTo:      make([]*Agent, 0),
+		MaxLastTalked:     3,
 	}
 }
 
@@ -335,13 +317,13 @@ func (ag *Agent) tryUseObjects(obj []*InterfaceObjet) string {
 				continue
 			case Believer:
 				if ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 600 {
-						ag.LastStatue = concrete
-						return "Pray"
+					ag.LastStatue = concrete
+					return "Pray"
 				}
 			case Neutral:
 				if rand.Float64() < 0.5 && (ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 350) {
-						ag.LastStatue = concrete
-						return "Pray"
+					ag.LastStatue = concrete
+					return "Pray"
 				}
 			}
 		}
@@ -393,15 +375,16 @@ func (ag *Agent) shouldInteract(other *Agent) bool {
 }
 func (ag *Agent) setOpinion(ag2 *Agent) {
 	if ag.TypeAgt == "Sceptic" && ag2.TypeAgt == "Believer" {
-		//faire proba avec charisme
 		ag.Opinion = ag.Opinion - 0.05
 		ag2.Opinion = ag2.Opinion + 0.05
 	} else if ag.TypeAgt == "Believer" && ag2.TypeAgt == "Sceptic" {
 		ag.Opinion = ag.Opinion + 0.05
 		ag2.Opinion = ag2.Opinion - 0.05
 	} else {
-		ag.Opinion = ag.Poids_rel[ag.Id]*ag.PersonalParameter*ag.Opinion*(1-ag.Opinion) + ag.Poids_rel[ag2.Id]*ag2.Opinion    //calcul du nouvel opinion
-		ag2.Opinion = ag.Poids_rel[ag.Id]*ag.Opinion + ag.Poids_rel[ag2.Id]*ag2.PersonalParameter*ag2.Opinion*(1-ag2.Opinion) //calcul du nouvel opinion
+		newOpinionAg := ag.Poids_rel[ag.Id].First*ag.PersonalParameter*ag.Opinion*(1-ag.Opinion) + ag.Poids_rel[ag2.Id].Second*ag2.Opinion
+		newOpinionAg2 := ag2.Poids_rel[ag.Id].Second*ag.Opinion + ag2.Poids_rel[ag2.Id].First*ag2.PersonalParameter*ag2.Opinion*(1-ag2.Opinion)
+		ag.Opinion = newOpinionAg
+		ag2.Opinion = newOpinionAg2
 	}
 	ag.Opinion = math.Max(0, math.Min(1, ag.Opinion))
 	ag2.Opinion = math.Max(0, math.Min(1, ag2.Opinion))
@@ -414,7 +397,7 @@ func (ag *Agent) interactWithAgent(other *Agent) string {
 	if other.Occupied || other.CurrentAction == "Discussing" {
 		return "Wait"
 	}
-	
+
 	// Retorna "Discuss" com o agente alvo
 	ag.DiscussingWith = other
 	return "Discuss"
@@ -441,7 +424,7 @@ func (ag *Agent) Act(env *Environnement, choice string) {
 	if ag.CurrentAction != "Running" {
 		return //l'agent est occupé
 	}
-	
+
 	switch choice {
 	case "Move":
 		ag.SendToEnv(Message{Type: "Move", Agent: ag})
@@ -466,12 +449,11 @@ func (ag *Agent) Act(env *Environnement, choice string) {
 		if ag.DiscussingWith != nil && !ag.DiscussingWith.Occupied {
 			ag.SetAction("Discussing")
 			ag.DiscussingWith.SetAction("Discussing")
-			
+
 			ag.Occupied = true
 			ag.DiscussingWith.Occupied = true
-			
+
 			ag.DiscussingWith.DiscussingWith = ag
-			
 			ag.addToTalkHistory(ag.DiscussingWith)
 			ag.DiscussingWith.addToTalkHistory(ag)
 		} else {
@@ -499,53 +481,53 @@ func (ag *Agent) ClearAction() {
 			ag.DiscussingWith.Occupied = false
 			ag.DiscussingWith.DiscussingWith = nil
 		}
-	
+
 	case "Praying":
 		log.Printf("Agent %v finished praying", ag.Id)
 		log.Printf("Agent Opinion before: %v", ag.Opinion)
 		if ag.TypeAgt == Believer {
-			ag.Opinion = math.Min(1.0, ag.Opinion + 0.05)
+			ag.Opinion = math.Min(1.0, ag.Opinion+0.05)
 		} else {
-			ag.Opinion = math.Min(1.0, ag.Opinion + 0.1)
+			ag.Opinion = math.Min(1.0, ag.Opinion+0.1)
 		}
 		ag.CheckType()
 		log.Printf("Agent Opinion after: %v", ag.Opinion)
-	
+
 	case "Using Computer":
 		log.Printf("Agent %v finished using computer", ag.Id)
 		log.Printf("Agent Opinion before: %v", ag.Opinion)
-		
+
 		currentProgram := ag.UseComputer.GetProgramm()
-		
+
 		switch ag.TypeAgt {
 		case Believer:
 			if currentProgram == "None" {
 				ag.UseComputer.SetProgramm("Go")
-				ag.Opinion = math.Min(1.0, ag.Opinion + 0.005)
+				ag.Opinion = math.Min(1.0, ag.Opinion+0.005)
 			} else if currentProgram == "Go" {
-				ag.Opinion = math.Min(1.0, ag.Opinion + 0.05)
+				ag.Opinion = math.Min(1.0, ag.Opinion+0.05)
 			}
-		
+
 		case Sceptic:
 			if currentProgram == "Go" {
 				ag.UseComputer.SetProgramm("None")
-				ag.Opinion = math.Max(0.0, ag.Opinion - 0.005)
+				ag.Opinion = math.Max(0.0, ag.Opinion-0.005)
 			} else if currentProgram == "None" {
-				ag.Opinion = math.Max(0.0, ag.Opinion - 0.05)
+				ag.Opinion = math.Max(0.0, ag.Opinion-0.05)
 			}
-		
+
 		case Neutral:
 			if currentProgram == "Go" {
-				ag.Opinion = math.Min(1.0, ag.Opinion + 0.05)
+				ag.Opinion = math.Min(1.0, ag.Opinion+0.05)
 			} else if currentProgram == "None" {
-				ag.Opinion = math.Max(0.0, ag.Opinion - 0.05)
+				ag.Opinion = math.Max(0.0, ag.Opinion-0.05)
 			}
 		}
-		
+
 		ag.CheckType()
 		log.Printf("Agent Opinion after: %v", ag.Opinion)
 		log.Printf("Computer program: %v", ag.UseComputer.GetProgramm())
-		
+
 		if ag.UseComputer != nil {
 			ag.UseComputer.Release()
 			ag.UseComputer = nil
@@ -577,7 +559,7 @@ func (env *Environnement) GetAgentById(id IdAgent) *Agent {
 
 func (ag *Agent) CheckType() {
 	oldType := ag.TypeAgt
-	
+
 	// Atualiza o tipo baseado na opinião
 	if ag.Opinion > 0.66 {
 		ag.TypeAgt = Believer

@@ -10,11 +10,16 @@ type Position struct {
 }
 
 const (
-AssetsPath             = "assets/images/"
-AgentBelieverImageFile = "ninja.png"
-AgentScepticImageFile  = "sceptic.png"
-AgentNeutralImageFile  = "neutre.png"
+	AssetsPath             = "assets/images/"
+	AgentBelieverImageFile = "ninja.png"
+	AgentScepticImageFile  = "sceptic.png"
+	AgentNeutralImageFile  = "neutre.png"
 )
+
+type Pair struct {
+	First  float64
+	Second float64
+}
 
 type Rectangle struct {
 	PositionDL Position
