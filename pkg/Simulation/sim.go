@@ -11,6 +11,7 @@ import (
 	"image/color"
 	"log"
 	"math/rand"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/wcharczuk/go-chart/v2"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/goregular"
 )
@@ -60,6 +62,7 @@ type Simulation struct {
 	cancel             context.CancelFunc
 	dialogFont         font.Face
 	selectionIndicator *ebiten.Image
+	opinionAverages   []float64
 }
 
 // NewSimulation initializes a new simulation
@@ -122,7 +125,7 @@ func loadMap() *carte.Carte {
 
 func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet {
 	obj := make([]ag.InterfaceObjet, NumComputers+NumStatues)
-
+	
 	for i := 0; i < NumComputers; i++ {
 		obj[i] = ag.NewComputer(
 			env,
@@ -274,7 +277,7 @@ func generateStatues(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []i
 			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 2 || layerIdx == 4 {
 				continue
 			}
-
+			
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -292,7 +295,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 4 || layerIdx == 3 {
 				continue
 			}
-
+			
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -300,7 +303,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			computersPositions = append(computersPositions, image.Rect(x, y, x+img.Bounds().Dx(), y+img.Bounds().Dy()))
 		}
 	}
-
+	
 	return computersPositions
 }
 
@@ -311,7 +314,7 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			if tileID == 0 || layerIdx == 0 {
 				continue
 			}
-
+			
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -487,9 +490,10 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		// Itere sobre as chaves ordenadas
 		for _, otherId := range keys {
 			relation := sim.selected.Relation[ag.IdAgent(otherId)]
+			relationType := getRelationType(relation)
 			ebitenutil.DebugPrintAt(
 				screen,
-				fmt.Sprintf("  %s: %.2f", otherId, relation),
+				fmt.Sprintf("  %s: %.2f %s ", otherId, relation, relationType),
 				panelX+padding,
 				y,
 			)
@@ -708,6 +712,14 @@ func (sim *Simulation) Update() error {
 			// Atualiza a referência para garantir dados atualizados
 			sim.selected = sim.env.GetAgentById(sim.selected.Id)
 		}
+
+		// Calcular a média de opiniões
+		totalOpinion := 0.0
+		for _, agent := range sim.agents {
+			totalOpinion += agent.Opinion
+		}
+		averageOpinion := totalOpinion / float64(len(sim.agents))
+		sim.opinionAverages = append(sim.opinionAverages, averageOpinion)
 	}
 	return nil
 }
@@ -726,6 +738,7 @@ func (sim *Simulation) Run() error {
 	if err := ebiten.RunGame(sim); err != nil && err != ebiten.Termination {
 		return err
 	}
+
 	// Affichages de finalisation
 	fmt.Println("\n--- Simulation Terminée ---")
 	fmt.Printf("Durée totale : %s\n", time.Since(sim.start).Round(time.Second))
@@ -748,6 +761,45 @@ func (sim *Simulation) Run() error {
 	averageOpinion := totalOpinion / float64(len(sim.agents))
 	fmt.Printf("\nOpinion moyenne des agents : %.2f\n", averageOpinion)
 
-	return nil
+	// Gerar e salvar o gráfico
+	xValues := make([]float64, len(sim.opinionAverages))
+	for i := range xValues {
+		xValues[i] = float64(i)
+	}
 
+	graph := chart.Chart{
+		Series: []chart.Series{
+			chart.ContinuousSeries{
+				XValues: xValues,
+				YValues: sim.opinionAverages,
+			},
+		},
+	}
+
+	file, err := os.Create("opinion_averages.png")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	err = graph.Render(chart.PNG, file)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getRelationType(relation float64) string {
+	switch {
+	case relation == 0.75:
+		return "Ennemi"
+	case relation == 1.0:
+		return "Pas de liens direct"
+	case relation == 1.25:
+		return "Amis"
+	case relation == 1.5:
+		return "Famille"
+	default:
+		return "Inconnu"
+	}
 }
