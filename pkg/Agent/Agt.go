@@ -46,7 +46,7 @@ type Agent struct {
 	Acuite            float64
 	Position          ut.Position
 	Opinion           float64
-	Charisme          map[IdAgent]float64 //influence d'un agent sur un autre
+	Charisme          map[IdAgent]float64 // influence d'un agent sur un autre
 	Relation          map[IdAgent]float64
 	PersonalParameter float64
 	Poid_rel          []float64
@@ -59,15 +59,18 @@ type Agent struct {
 	CurrentAction     string
 	DialogTimer       int
 	Occupied          bool
-	AgentProximity    []Agent
+	AgentProximity    []*Agent
 	ObjsProximity     []*InterfaceObjet
 	UseComputer       *Computer
 	LastComputer      *Computer
 	LastStatue        *Statue
 	TimeLastStatue    int
 	HeatMap           *VisitationMap
-	CurrentWaypoint   *ut.Position // Ponto atual de patrulha para agentes Neutral
+	CurrentWaypoint   *ut.Position // Point actuel de patrouille pour les agents Neutral
 	MovementStrategy  MovementStrategy
+	DiscussingWith    *Agent  // Référence à l'agent avec qui il discute
+	LastTalkedTo      []*Agent  // Liste des derniers agents avec qui il a conversé
+	MaxLastTalked     int       // Taille maximale de la liste des derniers agents
 }
 
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
@@ -84,7 +87,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0), ObjsProximity: make([]*InterfaceObjet, 0), UseComputer: nil, LastComputer: nil, LastStatue: nil, TimeLastStatue: 999, CurrentWaypoint: nil}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]*Agent, 0), ObjsProximity: make([]*InterfaceObjet, 0), UseComputer: nil, LastComputer: nil, LastStatue: nil, TimeLastStatue: 999, CurrentWaypoint: nil, LastTalkedTo: make([]*Agent, 0), MaxLastTalked: 3}
 }
 
 
@@ -138,7 +141,7 @@ func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
 	return false
 }
 
-func (ag *Agent) Percept(env *Environnement) ([]Agent, []*InterfaceObjet) {
+func (ag *Agent) Percept(env *Environnement) ([]*Agent, []*InterfaceObjet) {
 	env.RLock()
 	defer env.RUnlock()
 	msg := Message{Type: "Perception", Agent: ag}
@@ -152,7 +155,7 @@ func (ag *Agent) Percept(env *Environnement) ([]Agent, []*InterfaceObjet) {
 	// percept objs
 	ag.ObjsProximity =  env.NearbyObjects(ag)
 	
-	return nil, ag.ObjsProximity
+	return ag.AgentProximity, ag.ObjsProximity
 }
 
 func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
@@ -166,7 +169,7 @@ func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
 	return priority
 }
 
-func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*InterfaceObjet) string {
+func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*InterfaceObjet) string {
     env.Lock()
     defer env.Unlock()
 
@@ -179,12 +182,12 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*Int
                     switch concrete.Programm {
                     case "Go":
                         if ag.TypeAgt == Sceptic {
-                            concrete.Programm = "None"
+                            concrete.SetProgramm("None")
                             return ag.useComputer(concrete)
                         }
                     case "None":
                         if ag.TypeAgt == Believer {
-                            concrete.Programm = "Go"
+                            concrete.SetProgramm("Go")
                             return ag.useComputer(concrete)
                         }
                     }
@@ -209,10 +212,12 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []Agent, obj []*Int
 
 	// Interagir avec d'autres agents
     if len(nearbyAgents) > 0 {
-        for _, ag2 := range nearbyAgents {
-            if !ag2.Occupied {
-                if ag.shouldInteract(ag2) {
-                    return ag.interactWithAgent(ag2)
+        for i := range nearbyAgents {
+            // Obtém o ponteiro para o agente original do ambiente
+            otherAgent := env.GetAgentById(nearbyAgents[i].Id)
+            if otherAgent != nil && !otherAgent.Occupied {
+                if ag.shouldInteract(otherAgent) {
+                    return ag.interactWithAgent(otherAgent)
                 }
             }
         }
@@ -233,28 +238,80 @@ func (ag *Agent) Prayer(statue *Statue) string {
 }
 
 func (ag *Agent) useComputer(computer *Computer) string {
-    computer.Used = true
+    if !computer.TryUse() {
+        return "Wait"
+    }
+    
     ag.Occupied = true
     ag.UseComputer = computer
     ag.LastComputer = computer
     return "Computer"
 }
 
-func (ag *Agent) shouldInteract(ag2 Agent) bool {
-    if ag.TypeAgt == ag2.TypeAgt {
-        return ag.Opinion != ag2.Opinion
+func (ag *Agent) shouldInteract(other *Agent) bool {
+    // Se algum dos agentes está ocupado, não deve interagir
+    if ag.Occupied || other.Occupied {
+        return false
+    }
+    
+    // Verifica se o outro agente já está em discussão com alguém
+    if other.CurrentAction == "Discussing" {
+        return false
+    }
+
+    // Verifica se já conversou recentemente com este agente
+    for _, lastTalked := range ag.LastTalkedTo {
+        if lastTalked.Id == other.Id {
+            return false
+        }
+    }
+
+    // Verifica se o tipo de agente influencia a interação
+    if ag.TypeAgt == other.TypeAgt {
+        return ag.Opinion != other.Opinion
     }
     return true
 }
 
-func (ag *Agent) interactWithAgent(ag2 Agent) string {
-    ag.SetAction("Discuss")
-    ag2.SetAction("Discuss")
+func (ag *Agent) interactWithAgent(other *Agent) string {
+    // Dupla verificação de segurança
+    if other.Occupied || other.CurrentAction == "Discussing" {
+        return "Wait"
+    }
+
+    // Configura ambos os agentes para discussão
+    ag.SetAction("Discussing")
+    other.SetAction("Discussing")
     ag.Occupied = true
-    ag2.Occupied = true
+    other.Occupied = true
+    
+    // Guarda referência do outro agente para visualização
+    ag.DiscussingWith = other
+    other.DiscussingWith = ag
+
+    // Adiciona ambos os agentes ao histórico um do outro
+    ag.addToTalkHistory(other)
+    other.addToTalkHistory(ag)
+
     return "Discuss"
 }
 
+func (ag *Agent) addToTalkHistory(other *Agent) {
+    // Verifica se o agente já está no histórico
+    for _, a := range ag.LastTalkedTo {
+        if a.Id == other.Id {
+            return // Se já está no histórico, não adiciona novamente
+        }
+    }
+
+    // Adiciona o novo agente ao início do histórico
+    ag.LastTalkedTo = append([]*Agent{other}, ag.LastTalkedTo...)
+
+    // Mantém apenas os últimos MaxLastTalked agentes
+    if len(ag.LastTalkedTo) > ag.MaxLastTalked {
+        ag.LastTalkedTo = ag.LastTalkedTo[:ag.MaxLastTalked]
+    }
+}
 
 func (ag *Agent) Act(env *Environnement, choice string) {
 	if ag.CurrentAction != "Running" {
@@ -284,8 +341,16 @@ func (ag *Agent) SetAction(action string) {
 }
 
 func (ag *Agent) ClearAction() {
-	ag.CurrentAction = "Running"
-	ag.DialogTimer = 0
+    if ag.CurrentAction == "Discussing" && ag.DiscussingWith != nil {
+        // Limpa também o estado do outro agente
+        ag.DiscussingWith.CurrentAction = "Running"
+        ag.DiscussingWith.Occupied = false
+        ag.DiscussingWith.DiscussingWith = nil
+    }
+    ag.CurrentAction = "Running"
+    ag.DialogTimer = 0
+    ag.Occupied = false
+    ag.DiscussingWith = nil
 }
 
 
@@ -295,4 +360,13 @@ func (ag *Agent) Eat() {
 
 func (ag *Agent) SendToEnv(msg Message) {
 	ag.Env.Communication <- msg
+}
+
+func (env *Environnement) GetAgentById(id IdAgent) *Agent {
+    for _, agent := range env.Ags {
+        if agent.Id == id {
+            return agent
+        }
+    }
+    return nil
 }

@@ -2,6 +2,7 @@ package pkg
 
 import (
 	pos "Gophecy/pkg/Utilitaries"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -55,7 +56,7 @@ func (o *Objet) GetImg() *ebiten.Image     { return o.Img }
 // Computer é um tipo específico de Objet
 type Computer struct {
     Objet
-    // Campos específicos do Computer, se houver
+    mutex sync.Mutex // Protege o acesso ao computador
 }
 
 func NewComputer(env *Environnement, id IdObjet, pos pos.Position) *Computer {
@@ -69,6 +70,30 @@ func NewComputer(env *Environnement, id IdObjet, pos pos.Position) *Computer {
             Type:     ComputerType,
         },
     }
+}
+
+// Adicione métodos thread-safe para usar o computador
+func (c *Computer) TryUse() bool {
+    c.mutex.Lock()
+    defer c.mutex.Unlock()
+    
+    if c.Used {
+        return false
+    }
+    c.Used = true
+    return true
+}
+
+func (c *Computer) Release() {
+    c.mutex.Lock()
+    defer c.mutex.Unlock()
+    c.Used = false
+}
+
+func (c *Computer) SetProgramm(p Programm) {
+    c.mutex.Lock()
+    defer c.mutex.Unlock()
+    c.Programm = p
 }
 
 // Statue é outro tipo específico de Objet

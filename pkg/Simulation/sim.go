@@ -220,12 +220,14 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 			CurrentAction:     "Praying",
 			DialogTimer:       2,
 			Occupied:          false,
-			AgentProximity:    make([]ag.Agent, 0),
+			AgentProximity:    make([]*ag.Agent, 0),
 			ObjsProximity:     make([]*ag.InterfaceObjet, 0),
 			UseComputer:       nil, //Using computer x
 			LastComputer:      nil, //Last computer used
 			HeatMap:           visitationMap,
 			MovementStrategy:  strategy,
+			LastTalkedTo:     make([]*ag.Agent, 0),
+			MaxLastTalked:    3,
 		}
 		env.AddAgent(&agents[i])
 	}
@@ -371,99 +373,118 @@ func (sim Simulation) drawAcuite(screen *ebiten.Image) {
 }
 
 func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
-	panelX, panelY := 0, 0
-	panelWidth, panelHeight := 240, WindowHeight-20
-	padding := 10
+    panelX, panelY := 0, 0
+    panelWidth, panelHeight := 240, WindowHeight-20
+    padding := 10
 
-	// Dessine le panneau de fond
-	vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
+    // Dessine le panneau de fond
+    vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
 
-	// Titre du panneau
-	ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
+    // Titre du panneau
+    ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
 
-	y := panelY + 30
+    y := panelY + 30
 
-	// Informations de la simulation
-	elapsed := time.Since(sim.start)
-	simInfo := fmt.Sprintf("Elapsed: %s", elapsed.Round(time.Second))
-	ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
-	y += 40
+    // Informations de la simulation
+    elapsed := time.Since(sim.start)
+    simInfo := fmt.Sprintf("Elapsed: %s", elapsed.Round(time.Second))
+    ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
+    y += 40
 
-	// Comptage des agents par type
-	ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
-	y += 20
-	agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
-	for _, agentType := range agentTypes {
-		count, _ := sim.env.NbrAgents.Load(agentType)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", agentType, count), panelX+padding, y)
-		y += 20
-	}
-	y += 20
+    // Comptage des agents par type
+    ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
+    y += 20
+    agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
+    for _, agentType := range agentTypes {
+        count, _ := sim.env.NbrAgents.Load(agentType)
+        ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", agentType, count), panelX+padding, y)
+        y += 20
+    }
+    y += 20
 
-	// Comptage des ordinateurs par programme None ou Go
-	ebitenutil.DebugPrintAt(screen, "Computer Count:", panelX+padding, y)
-	y += 20
-	computerTypes := []string{"None", "Go"}
-	pcs := sim.env.Objs
-	for _, computerType := range computerTypes {
-		count := 0
-		for _, pc := range pcs {
-			if pc.GetType() != ag.ComputerType {
-				continue
-			}
-			if string(pc.GetProgramm()) == computerType {
-				count++
-			}
-		}
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", computerType, count), panelX+padding, y)
-		y += 20
-	}
-	y += 20
-	
+    // Comptage des ordinateurs par programme None ou Go
+    ebitenutil.DebugPrintAt(screen, "Computer Count:", panelX+padding, y)
+    y += 20
+    computerTypes := []string{"None", "Go"}
+    pcs := sim.env.Objs
+    for _, computerType := range computerTypes {
+        count := 0
+        for _, pc := range pcs {
+            if pc.GetType() != ag.ComputerType {
+                continue
+            }
+            if string(pc.GetProgramm()) == computerType {
+                count++
+            }
+        }
+        ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", computerType, count), panelX+padding, y)
+        y += 20
+    }
+    y += 20
 
-	// Informations de l'agent sélectionné
-	if sim.selected != nil {
-		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
-		y += 20
-		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t\n  Last Prayer : %d",
-			sim.selected.Id,
-			sim.selected.TypeAgt,
-			sim.selected.PersonalParameter,
-			sim.selected.Vivant,
-			sim.selected.DialogTimer,
-			sim.selected.CurrentAction,
-			sim.selected.MoveTimer,
-			sim.selected.Occupied,
-			sim.selected.TimeLastStatue,
-		)
-		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
+    // Informations de l'agent sélectionné
+    if sim.selected != nil {
+        ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
+        y += 20
+        agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t\n  Last Prayer : %d",
+            sim.selected.Id,
+            sim.selected.TypeAgt,
+            sim.selected.PersonalParameter,
+            sim.selected.Vivant,
+            sim.selected.DialogTimer,
+            sim.selected.CurrentAction,
+            sim.selected.MoveTimer,
+            sim.selected.Occupied,
+            sim.selected.TimeLastStatue,
+        )
+        ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
+        y += 180
 
-		// Adiciona informações sobre relações
-		y += 40
-		ebitenutil.DebugPrintAt(screen, "Relations:", panelX+padding, y)
-		y += 20
-		for otherId, relation := range sim.selected.Relation {
-			ebitenutil.DebugPrintAt(
-				screen,
-				fmt.Sprintf("  %s: %.2f", otherId, relation),
-				panelX+padding,
-				y,
-			)
-			y += 15
-		}
-	}
+        // Informações sobre discussão atual
+        if sim.selected.DiscussingWith != nil {
+            discussInfo := fmt.Sprintf("  Discussing with:\n  ID: %s\n  Type: %s",
+                sim.selected.DiscussingWith.Id,
+                sim.selected.DiscussingWith.TypeAgt,
+            )
+            ebitenutil.DebugPrintAt(screen, discussInfo, panelX+padding, y)
+            y += 60
+        }
 
-	// Informations de l'ordinateur sélectionné
-	if sim.selectedPC != nil {
-		ebitenutil.DebugPrintAt(screen, "Selected Computer:", panelX+padding, y)
-		y += 20
-		pcInfo := fmt.Sprintf("  ID: %s\n  Used: %t\n  Program : %s",
-			sim.selectedPC.Id,
-			sim.selectedPC.Used,
-			sim.selectedPC.Programm,
-		)
-		ebitenutil.DebugPrintAt(screen, pcInfo, panelX+padding, y)
-	}
+        // Histórico de conversas
+        ebitenutil.DebugPrintAt(screen, "  Last conversations with:", panelX+padding, y)
+        y += 20
+        for i, lastTalked := range sim.selected.LastTalkedTo {
+            talkInfo := fmt.Sprintf("    %d. %s (%s)", i+1, lastTalked.Id, lastTalked.TypeAgt)
+            ebitenutil.DebugPrintAt(screen, talkInfo, panelX+padding, y)
+            y += 15
+        }
+        y += 20
+
+        // Relações com outros agentes
+        ebitenutil.DebugPrintAt(screen, "Relations:", panelX+padding, y)
+        y += 20
+        for otherId, relation := range sim.selected.Relation {
+            ebitenutil.DebugPrintAt(
+                screen,
+                fmt.Sprintf("  %s: %.2f", otherId, relation),
+                panelX+padding,
+                y,
+            )
+            y += 15
+        }
+    }
+
+    // Informations de l'ordinateur sélectionné
+    if sim.selectedPC != nil {
+        ebitenutil.DebugPrintAt(screen, "Selected Computer:", panelX+padding, y)
+        y += 20
+        pcInfo := fmt.Sprintf("  ID: %s\n  Used: %t\n  Program : %s",
+            sim.selectedPC.Id,
+            sim.selectedPC.Used,
+            sim.selectedPC.Programm,
+        )
+        ebitenutil.DebugPrintAt(screen, pcInfo, panelX+padding, y)
+    }
 }
 
 func (sim *Simulation) drawMap(screen *ebiten.Image) {
@@ -487,30 +508,25 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 	
 	// Primeiro, desenha as linhas de conexão entre agentes em discussão
 	for _, agent := range sim.agents {
-		if agent.CurrentAction == "Discussing" {
-			// Procura outros agentes próximos que também estão discutindo
-			for _, other := range agent.AgentProximity {
-				if other.CurrentAction == "Discussing" {
-					// Desenha uma linha conectando os agentes
-					startX := agent.Position.X + float64(AgentImageSize)/2
-					startY := agent.Position.Y + float64(AgentImageSize)/2
-					endX := other.Position.X + float64(AgentImageSize)/2
-					endY := other.Position.Y + float64(AgentImageSize)/2
+		if agent.CurrentAction == "Discussing" && agent.DiscussingWith != nil {
+			// Desenha uma linha conectando os agentes que estão discutindo
+			startX := agent.Position.X + float64(AgentImageSize)/2
+			startY := agent.Position.Y + float64(AgentImageSize)/2
+			endX := agent.DiscussingWith.Position.X + float64(AgentImageSize)/2
+			endY := agent.DiscussingWith.Position.Y + float64(AgentImageSize)/2
 
-					// Escolhe a cor da linha baseado nos tipos dos agentes
-					lineColor := color.RGBA{150, 150, 150, 255}
-					vector.StrokeLine(
-						screen,
-						float32(startX),
-						float32(startY),
-						float32(endX),
-						float32(endY),
-						1,
-						lineColor,
-						false,
-					)
-				}
-			}
+			// Escolhe a cor da linha baseado nos tipos dos agentes
+			lineColor := color.RGBA{150, 150, 150, 255}
+			vector.StrokeLine(
+				screen,
+				float32(startX),
+				float32(startY),
+				float32(endX),
+				float32(endY),
+				1,
+				lineColor,
+				false,
+			)
 		}
 	}
 
@@ -608,51 +624,49 @@ func (sim *Simulation) Update() error {
 	case <-sim.ctx.Done():
 		return ebiten.Termination
 	default:
-		//Detection des nearby agents
-
-		//log.Printf("Agents proches détectés: %v", sim.env.AgentProximity)
-		// Posição do cursor
+		// Detecção de cliques
 		cursorX, cursorY := ebiten.CursorPosition()
 
-		// Detecte le clic
+		// Detecta clique do mouse
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			// Verifica clique em agentes
 			for i := range sim.agents {
 				agent := &sim.agents[i]
-				// Vérifie si le clic est à l'intérieur de la zone de l'agent
-				if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
-					cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
-					sim.selected = agent // Définit l'agent sélectionné
-					sim.selectedPC = nil // Efface l'ordinateur sélectionné
+				if cursorX >= int(agent.Position.X) && 
+				   cursorX <= int(agent.Position.X+AgentImageSize) &&
+				   cursorY >= int(agent.Position.Y) && 
+				   cursorY <= int(agent.Position.Y+AgentImageSize) {
+					sim.selected = agent
+					sim.selectedPC = nil
 					sim.selectionIndicator = ebiten.NewImage(AgentImageSize, AgentImageSize)
-                sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
-                
-
+					sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
 					break
 				}
 			}
 
+			// Verifica clique em computadores
 			for i := range sim.objets {
 				if sim.objets[i].GetType() != ag.ComputerType {
 					continue
 				}
 				
 				pc := &sim.objets[i]
-
-				// Vérifie si le clic est à l'intérieur de la zone de l'ordinateur
 				if computer, ok := (*pc).(*ag.Computer); ok {
-					if cursorX >= int(computer.ObjPosition().X) && cursorX <= int(computer.ObjPosition().X+TileSize) &&
-						cursorY >= int(computer.ObjPosition().Y) && cursorY <= int(computer.ObjPosition().Y+TileSize) {
-							sim.selectedPC = computer
-							sim.selected = nil
-							sim.selectionIndicator = ebiten.NewImage(TileSize, TileSize)
-							sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
+					if cursorX >= int(computer.ObjPosition().X) && 
+					   cursorX <= int(computer.ObjPosition().X+TileSize) &&
+					   cursorY >= int(computer.ObjPosition().Y) && 
+					   cursorY <= int(computer.ObjPosition().Y+TileSize) {
+						sim.selectedPC = computer
+						sim.selected = nil
+						sim.selectionIndicator = ebiten.NewImage(TileSize, TileSize)
+						sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
 						break
 					}
 				}
 			}
-
 		}
 
+		// Atualização dos timers e estados
 		for i := range sim.agents {
 			if sim.agents[i].TimeLastStatue >= 0 && sim.agents[i].TypeAgt == ag.Believer {
 				sim.agents[i].TimeLastStatue++
@@ -660,13 +674,12 @@ func (sim *Simulation) Update() error {
 			if sim.agents[i].DialogTimer > 0 {
 				sim.agents[i].DialogTimer--
 				if sim.agents[i].DialogTimer == 0 {
-					sim.agents[i].ClearAction()
-					if sim.agents[i].UseComputer != nil {
-						log.Printf("Agent %s has finished using computer %s", sim.agents[i].Id, sim.agents[i].UseComputer.ID())
-						sim.agents[i].UseComputer.Used = false
-					}
-					
-					sim.agents[i].Occupied = false
+						sim.agents[i].ClearAction()
+						if sim.agents[i].UseComputer != nil {
+							sim.agents[i].UseComputer.Release()
+							sim.agents[i].UseComputer = nil
+						}
+						sim.agents[i].Occupied = false
 				}
 			}
 		}

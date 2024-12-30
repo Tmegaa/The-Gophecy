@@ -3,6 +3,7 @@ package pkg
 import (
 	carte "Gophecy/pkg/Carte"
 	ut "Gophecy/pkg/Utilitaries"
+	"image"
 	"math"
 	"math/rand"
 	"sync"
@@ -25,7 +26,7 @@ func (m MovementStrategy) String() string {
 
 type Message struct {
 	Type         string
-	NearbyAgents []Agent
+	NearbyAgents []*Agent
 	Agent        *Agent
 }
 
@@ -69,8 +70,8 @@ func (env *Environnement) AddAgent(ag *Agent) {
 	}
 }
 
-func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
-	nearbyAgents := make([]Agent, 0)
+func (env *Environnement) NearbyAgents(ag *Agent) []*Agent {
+	nearbyAgents := make([]*Agent, 0)
 	pos := ag.AgtPosition()
 	var area ut.Rectangle
 	area.PositionDL.X = pos.X - ag.Acuite
@@ -80,13 +81,10 @@ func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
 
 	for _, ag2 := range env.Ags {
 		if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
-			nearbyAgents = append(nearbyAgents, *ag2)
+			nearbyAgents = append(nearbyAgents, ag2)
 		}
 	}
-	if len(nearbyAgents) > 0 {
-	}
 	return nearbyAgents
-
 }
 
 func (env *Environnement) NearbyObjects(ag *Agent) []*InterfaceObjet {
@@ -150,7 +148,7 @@ func (env *Environnement) Move(ag *Agent) {
 		return
 	}
 
-	// Utilise la stratégie définie pour chaque type d'agent
+	// Usa a estratégia definida para cada tipo de agente
 	switch ag.MovementStrategy {
 	case RandomMovement:
 		env.moveRandom(ag)
@@ -161,7 +159,7 @@ func (env *Environnement) Move(ag *Agent) {
 	case CenterOfMassMovement:
 		env.moveToCenterOfMass(ag)
 	default:
-		env.moveRandom(ag) // Fallback pour mouvement aléatoire
+		env.moveRandom(ag) // Fallback para movimento aleatório
 	}
 
 	ag.MoveTimer = 60
@@ -192,76 +190,142 @@ func (env *Environnement) moveWithHeatMap(ag *Agent) {
 
 // Mouvement de patrouille pour les Neutrals
 func (env *Environnement) movePatrol(ag *Agent) {
-	// Chance de changer de direction même s'il n'a pas atteint le waypoint
-	if ag.CurrentWaypoint != nil && rand.Float64() < 0.02 { // 2% de chance par tick de changer de direction
+	// Chance de mudar de direção mesmo se não chegou ao waypoint
+	if ag.CurrentWaypoint != nil && rand.Float64() < 0.02 {
 		ag.CurrentWaypoint = nil
 	}
 
-	// Si pas de waypoint actuel ou proche du waypoint actuel
+	// Se não tem waypoint atual ou está próximo do waypoint atual
 	if ag.CurrentWaypoint == nil || ut.Distance(ag.Position, *ag.CurrentWaypoint) < 5.0 {
-		// Choisit un nouveau waypoint
 		if len(ag.HeatMap.Positions) > 0 {
-			// Prend 3 points aléatoires et en choisit un
-			numChoices := 3
-			choices := make([]ut.Position, 0, numChoices)
+			// Tenta encontrar um waypoint válido
+			maxAttempts := 10 // Limite de tentativas para evitar loop infinito
+			attempts := 0
 			
-			for i := 0; i < numChoices; i++ {
-				randomIdx := rand.Intn(len(ag.HeatMap.Positions))
-				choices = append(choices, ag.HeatMap.Positions[randomIdx])
-			}
-
-			// Choisit le point basé sur une combinaison de :
-			// - Distance (préfère les points ni trop proches ni trop éloignés)
-			// - Aléatoire
-			var bestChoice ut.Position
-			bestScore := -1.0
-
-			for _, pos := range choices {
-				dist := ut.Distance(ag.Position, pos)
+			for attempts < maxAttempts {
+				// Seleciona 3 pontos aleatórios
+				numChoices := 3
+				choices := make([]ut.Position, 0, numChoices)
 				
-				// Score basé sur la distance (préfère les distances moyennes, entre 100 et 300 pixels)
-				distScore := 0.0
-				if dist < 100 {
-					distScore = dist / 100 // Score augmente jusqu'à 100
-				} else if dist > 300 {
-					distScore = 2 - (dist-300)/300 // Score diminue après 300
-				} else {
-					distScore = 1.0 // Distance idéale
+				for i := 0; i < numChoices; i++ {
+					randomIdx := rand.Intn(len(ag.HeatMap.Positions))
+					pos := ag.HeatMap.Positions[randomIdx]
+					
+					// Verifica se o caminho até o ponto está livre
+					if isPathClear(ag.Position, pos, env.Carte.Coliders) {
+						choices = append(choices, pos)
+					}
 				}
 
-				// Ajoute de l'aléatoire au score
-				randomFactor := 0.5 + rand.Float64()
-				finalScore := distScore * randomFactor
+				if len(choices) > 0 {
+					var bestChoice ut.Position
+					bestScore := -1.0
 
-				if finalScore > bestScore {
-					bestScore = finalScore
-					bestChoice = pos
+					for _, pos := range choices {
+						dist := ut.Distance(ag.Position, pos)
+						
+						// Ajusta os critérios de distância
+						distScore := 0.0
+						if dist < 50 { // Reduz distância mínima
+							distScore = dist / 50
+						} else if dist > 200 { // Reduz distância máxima
+							distScore = 2 - (dist-200)/200
+						} else {
+							distScore = 1.0
+						}
+
+						// Adiciona fator de desvio de objetos
+						obstacleScore := getObstacleAvoidanceScore(pos, env.Carte.Coliders)
+						
+						// Combina os scores
+						randomFactor := 0.5 + rand.Float64()
+						finalScore := (distScore * 0.4 + obstacleScore * 0.4) * randomFactor
+
+						if finalScore > bestScore {
+							bestScore = finalScore
+							bestChoice = pos
+						}
+					}
+
+					if bestScore > 0 {
+						ag.CurrentWaypoint = &bestChoice
+						break
+					}
 				}
+				
+				attempts++
 			}
 
-			ag.CurrentWaypoint = &bestChoice
+			// Se não encontrou um waypoint válido, usa movimento aleatório
+			if ag.CurrentWaypoint == nil {
+				env.moveRandom(ag)
+				return
+			}
 		}
 	}
 
-	// Si a un waypoint, se déplace vers lui avec une certaine variation
+	// Movimento em direção ao waypoint
 	if ag.CurrentWaypoint != nil {
 		dx := ag.CurrentWaypoint.X - ag.Position.X
 		dy := ag.CurrentWaypoint.Y - ag.Position.Y
 		
-		// Ajoute une petite variation aléatoire au mouvement
-		dx += (rand.Float64()*2 - 1) * 5 // Variation de ±5 pixels
-		dy += (rand.Float64()*2 - 1) * 5
+		// Reduz a variação aleatória
+		dx += (rand.Float64()*2 - 1) * 2 // Reduz para ±2 pixels
+		dy += (rand.Float64()*2 - 1) * 2
 
-		// Normalise la direction
 		length := math.Sqrt(dx*dx + dy*dy)
 		if length > 0 {
-			speed := ut.Maxspeed * (0.8 + rand.Float64()*0.4) // Vitesse varie entre 80% et 120% de la maximale
+			speed := ut.Maxspeed * (0.9 + rand.Float64()*0.2) // Velocidade mais consistente
 			ag.Position.Dx = (dx / length) * speed
 			ag.Position.Dy = (dy / length) * speed
 		}
-	} else {
-		env.moveRandom(ag)
 	}
+}
+
+// Função auxiliar para verificar se o caminho está livre
+func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
+	// Verifica alguns pontos ao longo do caminho
+	steps := 10
+	dx := (end.X - start.X) / float64(steps)
+	dy := (end.Y - start.Y) / float64(steps)
+
+	for i := 0; i <= steps; i++ {
+		x := start.X + dx*float64(i)
+		y := start.Y + dy*float64(i)
+		
+		// Verifica colisão no ponto
+		for _, colider := range coliders {
+			if colider.Overlaps(image.Rect(int(x)-8, int(y)-8, int(x)+8, int(y)+8)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Função para calcular score de desvio de obstáculos
+func getObstacleAvoidanceScore(pos ut.Position, coliders []image.Rectangle) float64 {
+	minDistance := math.MaxFloat64
+	
+	// Encontra a distância ao obstáculo mais próximo
+	for _, colider := range coliders {
+		centerX := float64(colider.Min.X + colider.Max.X) / 2
+		centerY := float64(colider.Min.Y + colider.Max.Y) / 2
+		
+		dist := math.Sqrt(math.Pow(pos.X-centerX, 2) + math.Pow(pos.Y-centerY, 2))
+		if dist < minDistance {
+			minDistance = dist
+		}
+	}
+	
+	// Normaliza o score (quanto mais longe dos obstáculos, melhor)
+	if minDistance < 30 {
+		return 0
+	}
+	if minDistance > 100 {
+		return 1
+	}
+	return (minDistance - 30) / 70
 }
 
 // Mouvement aléatoire (utilisé comme fallback)
