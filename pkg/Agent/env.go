@@ -415,3 +415,55 @@ func (env *Environnement) moveToCenterOfMass(ag *Agent) {
 		env.moveRandom(ag)
 	}
 }
+
+func (env *Environnement) SetPoids() {
+	minWeight := 0.01
+	maxWeight := 1.0
+	for _, ag := range env.Ags {
+		sum := 0.0
+		for _, ag2 := range env.Ags {
+			// pour chaque agent déja existant de l'environnement,
+			// on affect un poids absolu aléatoire et impacté par la relation entre agents
+			// et on calcule le poids relatif
+			ag.Poids_abs[ag2.ID()] = minWeight + rand.Float64()*(maxWeight-minWeight)*ag.Relation[ag2.ID()]
+			sum += ag.Poids_abs[ag2.Id]
+		}
+		//on applique la propriété de normalisation des poids absolus
+		for _, ag2 := range env.Ags {
+			pair := ut.Pair{}
+			if sum > 0 {
+				ag.Poids_abs[ag2.Id] = ag.Poids_abs[ag2.Id] / sum
+			} else {
+				ag.Poids_abs[ag2.Id] = 0
+			}
+			if ag.Id != ag2.Id {
+				pair.Second = ag.Poids_abs[ag2.Id] / (ag.Poids_abs[ag2.Id] + ag.Poids_abs[ag.Id])
+				pair.First = ag.Poids_abs[ag.Id] / (ag.Poids_abs[ag2.Id] + ag.Poids_abs[ag.Id])
+			}
+			ag.Poids_rel[ag2.Id] = pair
+		}
+	}
+}
+
+func (env *Environnement) SetRelations() {
+	for _, ag := range env.Ags {
+		for _, ag2 := range env.Ags {
+			if ag.ID() != ag2.ID() {
+				close := rand.Float64()
+				switch {
+				case close < 0.25: //ennemi
+					ag.Relation[ag2.ID()] = 0.75
+				case close < 0.5: //pas de liens direct
+					ag.Relation[ag2.ID()] = 1
+				case close < 0.75: //amis
+					ag.Relation[ag2.ID()] = 1.25
+				case close < 1: //famille
+					ag.Relation[ag2.ID()] = 1.5
+				}
+			} else {
+				ag.Relation[ag2.ID()] = 1
+			}
+
+		}
+	}
+}

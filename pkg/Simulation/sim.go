@@ -11,6 +11,7 @@ import (
 	"image/color"
 	"log"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 
@@ -39,8 +40,8 @@ const (
 	TilemapJSONFile        = "spawn.json"
 	DiscussionBubbleWidth  = 100
 	DiscussionBubbleHeight = 40
-	ProbabilityConverter = 0.2
-	ProbabilityPirate = 0.15
+	ProbabilityConverter   = 0.2
+	ProbabilityPirate      = 0.15
 )
 
 type Simulation struct {
@@ -189,16 +190,14 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		} else {
 			TypeChoosen = ag.Believer
 		}
-
 		id := ag.IdAgent(fmt.Sprintf("Agent%d", i))
 		velocite := rand.Float64()
 		acuite := 50.0
 		position := validPositions[i]
-		personalParameter := rand.Float64()
-
+		personalParameter := rand.Float64() * 4.0
 		// Cria mapa de carisma
 		charisme := make(map[ag.IdAgent]float64)
-		charisme[id] = rand.Float64()
+		//charisme[id] = rand.Float64()
 
 		// Cria mapa de relações
 		relation := make(map[ag.IdAgent]float64)
@@ -236,10 +235,11 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		// Configura campos adicionais
 		agent.HeatMap = visitationMap
 		agent.MovementStrategy = strategy
-
 		agents[i] = *agent
 		env.AddAgent(&agents[i])
 	}
+	env.SetRelations()
+	env.SetPoids()
 	return agents
 }
 
@@ -474,7 +474,19 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		// Relações com outros agentes
 		ebitenutil.DebugPrintAt(screen, "Relations:", panelX+padding, y)
 		y += 20
-		for otherId, relation := range sim.selected.Relation {
+
+		// Colete as chaves do mapa
+		keys := make([]string, 0, len(sim.selected.Relation))
+		for otherId := range sim.selected.Relation {
+			keys = append(keys, string(otherId))
+		}
+
+		// Ordene as chaves
+		sort.Strings(keys)
+
+		// Itere sobre as chaves ordenadas
+		for _, otherId := range keys {
+			relation := sim.selected.Relation[ag.IdAgent(otherId)]
 			ebitenutil.DebugPrintAt(
 				screen,
 				fmt.Sprintf("  %s: %.2f", otherId, relation),
@@ -548,7 +560,7 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 
 		// Removido o efeito de luz para agentes em discussão
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
-			screen.DrawImage(subImg, &opts)
+		screen.DrawImage(subImg, &opts)
 
 		sim.drawDialogBox(screen, agent)
 	}
