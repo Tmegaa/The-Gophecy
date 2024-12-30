@@ -89,7 +89,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: MoveAct, DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
 }
 
 // Fonction qui renvoie d'ID d'un agent
@@ -105,33 +105,31 @@ func (ag *Agent) AgtPosition() ut.Position {
 // Fonction qui lance la boucle de perception, délibération et action pour chaque agent
 func (ag *Agent) Start() {
 	log.Printf("%s lancement...\n", ag.Id)
-
-	go func() {
-		env := ag.Env
-		//var step int
-		// Boucle de simulation pour notre agent
-		for {
-			// Perception
-			//step = <-ag.SyncChan
-			//time.Sleep(1 * time.Second)
-			if len(ag.AgentProximity) > 0 {
-				log.Printf("Nearby agents %v", ag.AgentProximity)
-			}
-
-			// Délibération
-			choice := ag.Deliberate(env)
-
-			// Action
-			if choice != MoveAct {
-				log.Printf("%s ,choice  %s ", ag.Id, choice)
-			}
-			ag.Act(env, choice)
-
-			//time.Sleep(1 * time.Second)
-			//ag.SyncChan <- step
+	env := ag.Env
+	//var step int
+	// Boucle de simulation pour notre agent
+	for {
+		// Perception
+		ag.Percept(env)
+		//step = <-ag.SyncChan
+		//time.Sleep(1 * time.Second)
+		if len(ag.AgentProximity) > 0 {
+			log.Printf("Nearby agents %v", ag.AgentProximity)
 		}
 
-	}()
+		// Délibération
+		choice := ag.Deliberate(env)
+
+		// Action
+		if choice != MoveAct {
+			log.Printf("%s ,choice  %s ", ag.Id, choice)
+		}
+		ag.Act(env, choice)
+
+		// time.Sleep(15 * time.Millisecond)
+		//ag.SyncChan <- step
+	}
+
 }
 
 /*
@@ -184,7 +182,6 @@ func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
 		switch ag.SubType {
 		case Pirate:
 			for _,
-
 
 	*/
 	priority := nearby
