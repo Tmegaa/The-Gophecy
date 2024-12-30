@@ -11,11 +11,11 @@
     "file.lastUsedOpenFilter": "Todos os Ficheiros (*)",
     "fileStates": {
         "spawn.json": {
-            "scale": 0.75,
-            "selectedLayer": 2,
+            "scale": 0.5,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 572.6666666666666,
-                "y": 650.6666666666666
+                "x": 1001,
+                "y": 476
             }
         },
         "tilesets/computersobj.json": {
@@ -51,12 +51,20 @@
             "scaleInDock": 1,
             "scaleInEditor": 1
         },
+        "tilesets/obj10.json": {
+            "dynamicWrapping": true
+        },
         "tilesets/objcomputers.json": {
             "dynamicWrapping": true,
             "scaleInDock": 1,
             "scaleInEditor": 1
         },
         "tilesets/objstatue.json": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/objsup.json": {
             "dynamicWrapping": true,
             "scaleInDock": 1,
             "scaleInEditor": 1
@@ -74,10 +82,12 @@
         "tilesets/img.json",
         "tilesets/obj.json",
         "tilesets/objcomputers.json",
-        "tilesets/objstatue.json"
+        "tilesets/objstatue.json",
+        "tilesets/objsup.json"
     ],
     "project": "gophecy.tiled-project",
     "recentFiles": [
+        "tilesets/objsup.json",
         "tilesets/objstatue.json",
         "tilesets/objcomputers.json",
         "tilesets/obj.json",

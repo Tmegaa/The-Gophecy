@@ -1,0 +1,90 @@
+{ "columns":0,
+ "grid":
+    {
+     "height":1,
+     "orientation":"orthogonal",
+     "width":1
+    },
+ "margin":0,
+ "name":"obj10",
+ "spacing":0,
+ "tilecount":12,
+ "tiledversion":"1.11.0",
+ "tileheight":84,
+ "tiles":[
+        {
+         "id":0,
+         "image":"..\/..\/objects\/map (37).png",
+         "imageheight":54,
+         "imagewidth":96
+        }, 
+        {
+         "id":1,
+         "image":"..\/..\/objects\/map (38).png",
+         "imageheight":54,
+         "imagewidth":117
+        }, 
+        {
+         "id":2,
+         "image":"..\/..\/objects\/map (39).png",
+         "imageheight":84,
+         "imagewidth":98
+        }, 
+        {
+         "id":3,
+         "image":"..\/..\/objects\/map (40).png",
+         "imageheight":47,
+         "imagewidth":144
+        }, 
+        {
+         "id":4,
+         "image":"..\/..\/objects\/map (41).png",
+         "imageheight":22,
+         "imagewidth":30
+        }, 
+        {
+         "id":5,
+         "image":"..\/..\/objects\/map (42).png",
+         "imageheight":44,
+         "imagewidth":42
+        }, 
+        {
+         "id":6,
+         "image":"..\/..\/objects\/map (43).png",
+         "imageheight":26,
+         "imagewidth":29
+        }, 
+        {
+         "id":7,
+         "image":"..\/..\/objects\/map (44).png",
+         "imageheight":48,
+         "imagewidth":95
+        }, 
+        {
+         "id":8,
+         "image":"..\/..\/objects\/map (45).png",
+         "imageheight":35,
+         "imagewidth":34
+        }, 
+        {
+         "id":9,
+         "image":"..\/..\/objects\/map (46).png",
+         "imageheight":25,
+         "imagewidth":30
+        }, 
+        {
+         "id":10,
+         "image":"..\/..\/objects\/map (47).png",
+         "imageheight":70,
+         "imagewidth":48
+        }, 
+        {
+         "id":11,
+         "image":"..\/..\/objects\/map (50).png",
+         "imageheight":36,
+         "imagewidth":37
+        }],
+ "tilewidth":144,
+ "type":"tileset",
+ "version":"1.10"
+}

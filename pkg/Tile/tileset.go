@@ -67,8 +67,6 @@ type DynTileset struct {
 func (d *DynTileset) Img(id int) *ebiten.Image {
 	id -= d.gid
 
-	
-
 	return d.imgs[id]
 }
 

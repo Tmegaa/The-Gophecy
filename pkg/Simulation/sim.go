@@ -28,7 +28,7 @@ const (
 	AgentImageSize         = 16
 	WindowWidth            = 1920
 	WindowHeight           = 1080
-	NumComputers           = 1
+	NumComputers           = 2
 	NumStatues             = 1
 	AssetsPath             = "assets/images/"
 	MapsPath               = "assets/maps/"
@@ -121,6 +121,7 @@ func loadMap() *carte.Carte {
 
 func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet {
 	obj := make([]ag.InterfaceObjet, NumComputers+NumStatues)
+	
 	for i := 0; i < NumComputers; i++ {
 		obj[i] = ag.NewComputer(
 			env,
@@ -270,10 +271,10 @@ func generateStatues(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []i
 	var computersPositions []image.Rectangle
 	for layerIdx, layer := range tilemapJSON.Layers {
 		for i, tileID := range layer.Data {
-			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 2 {
+			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 2 || layerIdx == 4 {
 				continue
 			}
-			log.Printf("TileID : %d", tileID)
+			
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -288,10 +289,10 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 	var computersPositions []image.Rectangle
 	for layerIdx, layer := range tilemapJSON.Layers {
 		for i, tileID := range layer.Data {
-			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 3 {
+			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 4 || layerIdx == 3 {
 				continue
 			}
-			log.Printf("TileID : %d", tileID)
+			
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -299,6 +300,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			computersPositions = append(computersPositions, image.Rect(x, y, x+img.Bounds().Dx(), y+img.Bounds().Dy()))
 		}
 	}
+	
 	return computersPositions
 }
 
@@ -309,6 +311,7 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			if tileID == 0 || layerIdx == 0 {
 				continue
 			}
+			
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
