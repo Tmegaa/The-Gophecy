@@ -255,52 +255,96 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 	env.Lock()
 	defer env.Unlock()
 
+	// Verifica se há objetos ou agentes próximos
+	hasObjects := len(obj) > 0
+	hasAgents := len(nearbyAgents) > 0
 
-
-	// Prioriser l'interaction avec les objets
-	if len(obj) > 0 {
-		for _, o := range obj {
-			switch concrete := (*o).(type) {
-			case *Computer:
-				if !concrete.Used && (ag.LastComputer == nil || concrete.ID() != ag.LastComputer.ID()) {
-					ag.UseComputer = concrete // Apenas guarda a referência do computador
-					return "Computer"
-				}
-			case *Statue:
-				switch ag.TypeAgt {
-				case Sceptic:
-					continue
-				case Believer:
-					if ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 600 {
-						ag.LastStatue = concrete // Apenas guarda a referência da estátua
-						return "Pray"
-					}
-				case Neutral:
-					if rand.Float64() < 0.5 && (ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 350) {
-						ag.LastStatue = concrete // Apenas guarda a referência da estátua
-						return "Pray"
-					}
-				}
-			}
-		}
-	}
-
-	// Interagir com d'autres agents
-	if len(nearbyAgents) > 0 {
-		for i := range nearbyAgents {
-			// Obtém o ponteiro para o agente original do ambiente
-			otherAgent := env.GetAgentById(nearbyAgents[i].Id)
-			if otherAgent != nil && !otherAgent.Occupied {
-				if ag.shouldInteract(otherAgent) {
-					return ag.interactWithAgent(otherAgent)
-				}
-			}
-		}
-	}
-
-	// Mouvement par défaut ou attente
-	if rand.Float64() < 0.8 {
+	if !hasObjects && !hasAgents {
 		return "Move"
+	}
+
+	// Define prioridade baseada no subtipo
+	switch ag.SubType {
+	case Pirate:
+		// Piratas priorizam computadores
+		if hasObjects {
+			for _, o := range obj {
+				if computer, ok := (*o).(*Computer); ok {
+					if !computer.Used && (ag.LastComputer == nil || computer.ID() != ag.LastComputer.ID()) {
+						ag.UseComputer = computer
+						return "Computer"
+					}
+				}
+			}
+		}
+		// Se não encontrar computador, tenta interagir
+		if hasAgents {
+			return ag.tryInteractWithAgents(env, nearbyAgents)
+		}
+
+	case Converter:
+		// Converters priorizam interação com outros agentes
+		if hasAgents {
+			result := ag.tryInteractWithAgents(env, nearbyAgents)
+			if result != "Move" {
+				return result
+			}
+		}
+		// Se não puder interagir, tenta usar objetos
+		if hasObjects {
+			return ag.tryUseObjects(obj)
+		}
+
+	default: // None ou outros subtipos
+		// Comportamento padrão: escolhe aleatoriamente entre objetos e agentes
+		if rand.Float64() < 0.5 && hasObjects {
+			return ag.tryUseObjects(obj)
+		} else if hasAgents {
+			return ag.tryInteractWithAgents(env, nearbyAgents)
+		}
+	}
+
+	return "Move"
+}
+
+// Função auxiliar para tentar interagir com agentes próximos
+func (ag *Agent) tryInteractWithAgents(env *Environnement, nearbyAgents []*Agent) string {
+	for i := range nearbyAgents {
+		otherAgent := env.GetAgentById(nearbyAgents[i].Id)
+		if otherAgent != nil && !otherAgent.Occupied {
+			if ag.shouldInteract(otherAgent) {
+				return ag.interactWithAgent(otherAgent)
+			}
+		}
+	}
+	return "Move"
+}
+
+// Função auxiliar para tentar usar objetos próximos
+func (ag *Agent) tryUseObjects(obj []*InterfaceObjet) string {
+	for _, o := range obj {
+		switch concrete := (*o).(type) {
+		case *Computer:
+			if !concrete.Used && (ag.LastComputer == nil || concrete.ID() != ag.LastComputer.ID()) {
+				ag.UseComputer = concrete
+				return "Computer"
+			}
+		case *Statue:
+			switch ag.TypeAgt {
+			case Sceptic:
+				continue
+			case Believer:
+				if ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 600 {
+						ag.LastStatue = concrete
+						return "Pray"
+				}
+			case Neutral:
+				if rand.Float64() < 0.5 && (ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 350) {
+						ag.LastStatue = concrete
+						return "Pray"
+				}
+			}
+		}
 	}
 	return "Move"
 }
