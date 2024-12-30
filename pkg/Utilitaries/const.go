@@ -9,6 +9,13 @@ type Position struct {
 	Dy float64
 }
 
+const (
+AssetsPath             = "assets/images/"
+AgentBelieverImageFile = "ninja.png"
+AgentScepticImageFile  = "sceptic.png"
+AgentNeutralImageFile  = "neutre.png"
+)
+
 type Rectangle struct {
 	PositionDL Position
 	PositionUR Position

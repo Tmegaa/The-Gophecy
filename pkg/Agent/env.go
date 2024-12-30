@@ -96,10 +96,9 @@ func (env *Environnement) NearbyObjects(ag *Agent) []*InterfaceObjet {
 	area.PositionUR.X = pos.X + ag.Acuite
 	area.PositionUR.Y = pos.Y - ag.Acuite
 
-
 	//for PC
 	for _, pc := range env.Objs {
-		
+
 		PCposition := pc.ObjPosition()
 
 		if ut.IsInRectangle(PCposition, area) {
@@ -138,11 +137,11 @@ func (env *Environnement) Move(ag *Agent) {
 
 	if ag.MoveTimer > 0 {
 		ag.MoveTimer -= 1
-		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) || 
-		   CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
+		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) ||
+			CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
 			return
 		}
-		
+
 		ag.Position.X += ag.Position.Dx
 		ag.Position.Y += ag.Position.Dy
 		return
@@ -169,7 +168,7 @@ func (env *Environnement) Move(ag *Agent) {
 func (env *Environnement) moveWithHeatMap(ag *Agent) {
 	// Obtient les 3 positions les moins visitées proches de l'agent
 	leastVisited := ag.HeatMap.GetLeastVisitedPositions(ag.Position, 3)
-	
+
 	// 70% de chance d'aller vers une position moins visitée
 	if len(leastVisited) > 0 && rand.Float64() < 0.7 {
 		// Choisit aléatoirement une des positions les moins visitées
@@ -201,16 +200,16 @@ func (env *Environnement) movePatrol(ag *Agent) {
 			// Tenta encontrar um waypoint válido
 			maxAttempts := 10 // Limite de tentativas para evitar loop infinito
 			attempts := 0
-			
+
 			for attempts < maxAttempts {
 				// Seleciona 3 pontos aleatórios
 				numChoices := 3
 				choices := make([]ut.Position, 0, numChoices)
-				
+
 				for i := 0; i < numChoices; i++ {
 					randomIdx := rand.Intn(len(ag.HeatMap.Positions))
 					pos := ag.HeatMap.Positions[randomIdx]
-					
+
 					// Verifica se o caminho até o ponto está livre
 					if isPathClear(ag.Position, pos, env.Carte.Coliders) {
 						choices = append(choices, pos)
@@ -223,7 +222,7 @@ func (env *Environnement) movePatrol(ag *Agent) {
 
 					for _, pos := range choices {
 						dist := ut.Distance(ag.Position, pos)
-						
+
 						// Ajusta os critérios de distância
 						distScore := 0.0
 						if dist < 50 { // Reduz distância mínima
@@ -236,10 +235,10 @@ func (env *Environnement) movePatrol(ag *Agent) {
 
 						// Adiciona fator de desvio de objetos
 						obstacleScore := getObstacleAvoidanceScore(pos, env.Carte.Coliders)
-						
+
 						// Combina os scores
 						randomFactor := 0.5 + rand.Float64()
-						finalScore := (distScore * 0.4 + obstacleScore * 0.4) * randomFactor
+						finalScore := (distScore*0.4 + obstacleScore*0.4) * randomFactor
 
 						if finalScore > bestScore {
 							bestScore = finalScore
@@ -252,7 +251,7 @@ func (env *Environnement) movePatrol(ag *Agent) {
 						break
 					}
 				}
-				
+
 				attempts++
 			}
 
@@ -268,7 +267,7 @@ func (env *Environnement) movePatrol(ag *Agent) {
 	if ag.CurrentWaypoint != nil {
 		dx := ag.CurrentWaypoint.X - ag.Position.X
 		dy := ag.CurrentWaypoint.Y - ag.Position.Y
-		
+
 		// Reduz a variação aleatória
 		dx += (rand.Float64()*2 - 1) * 2 // Reduz para ±2 pixels
 		dy += (rand.Float64()*2 - 1) * 2
@@ -292,7 +291,7 @@ func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
 	for i := 0; i <= steps; i++ {
 		x := start.X + dx*float64(i)
 		y := start.Y + dy*float64(i)
-		
+
 		// Verifica colisão no ponto
 		for _, colider := range coliders {
 			if colider.Overlaps(image.Rect(int(x)-8, int(y)-8, int(x)+8, int(y)+8)) {
@@ -306,18 +305,18 @@ func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
 // Função para calcular score de desvio de obstáculos
 func getObstacleAvoidanceScore(pos ut.Position, coliders []image.Rectangle) float64 {
 	minDistance := math.MaxFloat64
-	
+
 	// Encontra a distância ao obstáculo mais próximo
 	for _, colider := range coliders {
-		centerX := float64(colider.Min.X + colider.Max.X) / 2
-		centerY := float64(colider.Min.Y + colider.Max.Y) / 2
-		
+		centerX := float64(colider.Min.X+colider.Max.X) / 2
+		centerY := float64(colider.Min.Y+colider.Max.Y) / 2
+
 		dist := math.Sqrt(math.Pow(pos.X-centerX, 2) + math.Pow(pos.Y-centerY, 2))
 		if dist < minDistance {
 			minDistance = dist
 		}
 	}
-	
+
 	// Normaliza o score (quanto mais longe dos obstáculos, melhor)
 	if minDistance < 30 {
 		return 0
@@ -336,7 +335,7 @@ func (env *Environnement) moveRandom(ag *Agent) {
 		{Dx: 0, Dy: ut.Maxspeed},
 		{Dx: 0, Dy: -ut.Maxspeed},
 	}
-	
+
 	randIdx := rand.Intn(len(directions))
 	ag.Position.Dx = directions[randIdx].Dx
 	ag.Position.Dy = directions[randIdx].Dy
@@ -347,7 +346,7 @@ func (env *Environnement) moveToCenterOfMass(ag *Agent) {
 	// Obtient tous les agents dans un rayon plus grand que la normale pour considérer des groupes distants
 	searchRadius := ag.Acuite * 2 // Double le rayon de recherche pour détecter des groupes plus grands
 	nearbyAgents := make([]Agent, 0)
-	
+
 	// Recherche des agents proches dans un rayon plus grand
 	pos := ag.Position
 	var searchArea ut.Rectangle
@@ -377,7 +376,7 @@ func (env *Environnement) moveToCenterOfMass(ag *Agent) {
 		// Poids basé sur la distance (les agents plus proches ont plus d'influence)
 		dist := ut.Distance(ag.Position, other.Position)
 		weight := 1.0 / (dist + 1) // Évite la division par zéro
-		
+
 		// Ajoute un bonus de poids pour les agents du même type
 		if other.TypeAgt == ag.TypeAgt {
 			weight *= 1.5

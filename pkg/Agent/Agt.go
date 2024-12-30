@@ -5,11 +5,12 @@ import (
 	"log"
 	"time"
 
+	"image"
+	"math"
 	"math/rand"
 
-	"image"
-
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 type InterfaceAgent interface {
@@ -80,14 +81,20 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	//calcul des poids relatif pour chaque agents
 	poids_rel := make(map[IdAgent]float64, 0)
 	poids_abs := make(map[IdAgent]float64, 0)
-	for _, v := range env.Ags {
-		// pour chaque agent déja exisatant de l'environnement, on affect un poids absolu aléatoire et on calcule le poids relatif
-		poids_abs[v.Id] = rand.Float64()
-		poids_rel[v.Id] = poids_abs[v.Id] / (poids_abs[id] + poids_abs[v.Id])
+	if len(env.Ags) == 0 {
+		poids_abs[id] = rand.Float64()
+		poids_rel[id] = poids_abs[id] / (poids_abs[id] + poids_abs[id])
+	} else {
 
-		// on affecte les poids absolu et relatif de l'agent que l'on vient de créer à chaque agent déja existant
-		v.Poids_abs[id] = rand.Float64()
-		v.Poids_rel[id] = v.Poids_abs[id] / (v.Poids_abs[id] + poids_abs[id])
+		for _, v := range env.Ags {
+			// pour chaque agent déja exisatant de l'environnement, on affect un poids absolu aléatoire et on calcule le poids relatif
+			poids_abs[v.Id] = rand.Float64()
+			poids_rel[v.Id] = poids_abs[v.Id] / (poids_abs[id] + poids_abs[v.Id])
+
+			// on affecte les poids absolu et relatif de l'agent que l'on vient de créer à chaque agent déja existant
+			v.Poids_abs[id] = rand.Float64()
+			v.Poids_rel[id] = v.Poids_abs[id] / (v.Poids_abs[id] + poids_abs[id])
+		}
 	}
 	personalCharisme := charisme[id]
 	for i, v := range charisme {
@@ -97,7 +104,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
-		PersonalParameter: personalParameter, Poids_rel: poids_rel,
+		PersonalParameter: personalParameter, Poids_rel: poids_rel, Poids_abs: poids_abs,
 		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]*Agent, 0), ObjsProximity: make([]*InterfaceObjet, 0), UseComputer: nil, LastComputer: nil, LastStatue: nil, TimeLastStatue: 999, CurrentWaypoint: nil, LastTalkedTo: make([]*Agent, 0), MaxLastTalked: 3}
 }
 
@@ -282,8 +289,22 @@ func (ag *Agent) shouldInteract(other *Agent) bool {
 	return true
 }
 func (ag *Agent) setOpinion(ag2 *Agent) {
-	ag.Opinion = ag.Poids_rel[ag.Id]*ag.PersonalParameter*ag.Opinion*(1-ag.Opinion) + ag.Poids_rel[ag2.Id]*ag2.Opinion    //calcul du nouvel opinion
-	ag2.Opinion = ag.Poids_rel[ag.Id]*ag.Opinion + ag.Poids_rel[ag2.Id]*ag2.PersonalParameter*ag2.Opinion*(1-ag2.Opinion) //calcul du nouvel opinion
+	if ag.TypeAgt == "Sceptic" && ag2.TypeAgt == "Believer" {
+		//faire proba avec charisme
+		ag.Opinion = ag.Opinion - 0.05
+		ag2.Opinion = ag2.Opinion + 0.05
+	} else if ag.TypeAgt == "Believer" && ag2.TypeAgt == "Sceptic" {
+		ag.Opinion = ag.Opinion + 0.05
+		ag2.Opinion = ag2.Opinion - 0.05
+	} else {
+		ag.Opinion = ag.Poids_rel[ag.Id]*ag.PersonalParameter*ag.Opinion*(1-ag.Opinion) + ag.Poids_rel[ag2.Id]*ag2.Opinion    //calcul du nouvel opinion
+		ag2.Opinion = ag.Poids_rel[ag.Id]*ag.Opinion + ag.Poids_rel[ag2.Id]*ag2.PersonalParameter*ag2.Opinion*(1-ag2.Opinion) //calcul du nouvel opinion
+	}
+	ag.Opinion = math.Max(0, math.Min(1, ag.Opinion))
+	ag2.Opinion = math.Max(0, math.Min(1, ag2.Opinion))
+	ag.CheckType()
+	ag2.CheckType()
+
 }
 func (ag *Agent) interactWithAgent(other *Agent) string {
 	// Dupla verificação de segurança
@@ -382,4 +403,27 @@ func (env *Environnement) GetAgentById(id IdAgent) *Agent {
 		}
 	}
 	return nil
+}
+
+func (ag *Agent) CheckType() { //fonction qui permet de définir le type de l'agent en fonction de son opinion; à verifier tous les X top d'horloges
+	{
+		if ag.Opinion > 0.66 {
+			ag.TypeAgt = Believer
+			ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentBelieverImageFile)
+		} else if ag.Opinion < 0.33 {
+			ag.TypeAgt = Sceptic
+			ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentScepticImageFile)
+		} else {
+			ag.TypeAgt = Neutral
+			ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentNeutralImageFile)
+		}
+	}
+}
+
+func loadImageAgt(path string) *ebiten.Image {
+	img, _, err := ebitenutil.NewImageFromFile(path)
+	if err != nil {
+		log.Fatalf("Failed to load image: %s, error: %v", path, err)
+	}
+	return img
 }
