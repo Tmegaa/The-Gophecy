@@ -3,7 +3,7 @@ package agent
 import (
 	carte "Gophecy/pkg/Carte"
 	ut "Gophecy/pkg/Utilitaries"
-	"log"
+	"image"
 	"math/rand"
 	"sync"
 )
@@ -86,48 +86,10 @@ func (env *Environnement) NearbyAgents(ag *Agent) []Agent {
 	for _, ag2 := range env.Ags {
 		if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
 			nearbyAgents = append(nearbyAgents, ag2)
-			//log.Printf("Top %v", nearbyAgents)
 		}
 	}
-	// if len(nearbyAgents) > 0 {
-	//log.Printf("NearbyAgent %v", nearbyAgents)
-	// }
 	return nearbyAgents
-	//log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearby))
 }
-
-/*
-// NearbyAgents calcule les agents proches de chaque agent
-
-	func (env *Environnement) NearbyAgents() {
-		env.Lock()
-		defer env.Unlock()
-		env.AgentProximity = &sync.Map{}
-		for _, ag := range env.Ags {
-			var nearbyAgents []*Agent
-			pos := ag.AgtPosition()
-			var area ut.Rectangle
-			area.PositionDL.X = pos.X - ag.Acuite
-			area.PositionDL.Y = pos.Y + ag.Acuite
-			area.PositionUR.X = pos.X + ag.Acuite
-			area.PositionUR.Y = pos.Y - ag.Acuite
-
-			for _, ag2 := range env.Ags {
-
-				if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
-					nearbyAgents = append(nearbyAgents, &ag2)
-					//log.Printf("Top %v", nearbyAgents)
-				}
-			}
-			//log.Printf("Agent %s has %d nearby agents", ag.ID(), len(nearbyAgents))
-			if len(nearbyAgents) > 0 {
-				//log.Printf("NearbyAgent %v", nearbyAgents)
-			}
-			env.AgentProximity.Store(ag.Id, nearbyAgents)
-			//log.Printf("Agent %s has %d nearby agents", ag.Id, len(nearbyAgents))
-		}
-	}
-*/
 
 // Fonction qui envoie la liste des objets proches pour un agent donné
 func (env *Environnement) NearbyObjects() {
@@ -150,7 +112,6 @@ func (env *Environnement) NearbyObjects() {
 				nearbyObjects = append(nearbyObjects, &obj)
 			}
 		}
-		//log.Printf("Agent %s has %d nearby objects", ag.ID(), len(nearbyObjects))
 		env.ObjectProximity.Store(ag.Id, nearbyObjects)
 	}
 }
@@ -167,7 +128,6 @@ func (env *Environnement) Listen() {
 
 			case msg.Type == MoveMsg:
 				env.Move(msg.Agent)
-
 			}
 		}
 	}()
@@ -179,25 +139,21 @@ func (env *Environnement) SendToAgent(agt *Agent, msg Message) {
 
 func (env *Environnement) Move(ag *Agent) {
 
-	ag.ClearAction()
-
-	if ag.MoveStepLimit > 0 {
-
-		ag.MoveStepLimit -= 1
-		//log.Printf("MoveStepLimit %v", ag.MoveStepLimit)
+	// On reste dans la même direction (la vitesse par rapport aux pas écoulés depuis le début de l'action nous permet d'avoir une certaine fréquence de changement de direction )
+	if ag.StepAction%ag.Velocite != 0 {
+		// Si une collision a lieu on s'arrête
 		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) || CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
-			log.Printf("Collision")
 			return
 		}
+		// Sinon on continue de bouger
 		ag.Position.X += ag.Position.Dx
 		ag.Position.Y += ag.Position.Dy
-		//log.Printf("Agent %s continued to move to %v", ag.Id, ag.Position)
 
 		return
 
 	}
 
-	log.Printf("Agent %s is moving", ag.Id)
+	// On change de direction
 	randIdx := 0
 	collision := true
 	right := ut.UniqueDirection{Dx: ut.Maxspeed, Dy: 0}
@@ -219,8 +175,32 @@ func (env *Environnement) Move(ag *Agent) {
 
 	ag.Position.Dx = directions[randIdx].Dx
 	ag.Position.Dy = directions[randIdx].Dy
+}
 
-	log.Printf("Agent %s moved to %v", ag.Id, ag.Position)
-	ag.MoveStepLimit = 60
+// Fonction qui vérifie s'il y a une collision entre un objet à la position x,y et les objets (horizontal)
+func CheckCollisionHorizontal(x, y float64, coliders []image.Rectangle) bool {
+	for _, colider := range coliders {
+		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
+			if x > 0 {
+				return true
+			} else if x < 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
 
+// Fonction qui vérifie s'il y a une collision entre un objet à la position x,y et les objets (vertical)
+func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
+	for _, colider := range coliders {
+		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
+			if y > 0 {
+				return true
+			} else if y < 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

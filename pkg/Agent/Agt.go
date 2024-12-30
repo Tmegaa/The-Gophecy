@@ -2,7 +2,6 @@ package agent
 
 import (
 	ut "Gophecy/pkg/Utilitaries"
-	"image"
 	"log"
 	"math/rand"
 
@@ -54,7 +53,7 @@ const (
 type Agent struct {
 	Env               *Environnement      // pointeur vers l'environnement
 	Id                IdAgent             // identifiant agent
-	Velocite          float64             // vitesse à laquelle un agent peut se déplacer
+	Velocite          int                 // vitesse à laquelle un agent peut se déplacer (pondère la fréquence de changement de direction)
 	Acuite            float64             // définie la perception de cet agent par rapport à l'environnement
 	Position          ut.Position         // position d'un agent dans la carte
 	Opinion           float64             // définie son degré de croyance ou de scepticisme
@@ -69,13 +68,15 @@ type Agent struct {
 	Img               *ebiten.Image       // image à afficher sur l'interface graphique
 	MoveStepLimit     int                 // limite de nombre de ticks pour une action de mouvement
 	DialogStepLimit   int                 // limite de nombre de ticks pour une action de conversation
+	WaitStepLimit     int                 // limite de nombre de ticks pour attendre
 	CurrentAction     ActionType          // action qui est en train d'être réalisée (soit dernière décision prise)
+	StepAction        int                 // nombre de boucles pendant lesquelles une action a été réalisée
 	Occupied          bool                // indique si un agent est engagé dans une action bloquante (une conversation par exemple)
 	AgentProximity    []Agent             // liste des agents qui sont proches
 }
 
 // Création d'un nouvel agent
-func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
+func NewAgent(env *Environnement, id IdAgent, velocite int, acuite float64, position ut.Position,
 	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, typeAgt TypeAgent, subTypeAgent SubTypeAgent, syncChan chan Message, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatifs du nouvel agent par rapport à chaque autre agent
@@ -89,7 +90,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveStepLimit: 20, CurrentAction: MoveAct, DialogStepLimit: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveStepLimit: 20, CurrentAction: MoveAct, DialogStepLimit: 10, WaitStepLimit: 10, StepAction: 0, Occupied: false, AgentProximity: make([]Agent, 0)}
 
 }
 
@@ -113,19 +114,19 @@ func (ag *Agent) Start() {
 		step := <-ag.SyncChan
 		// Perception
 		ag.Percept(env)
-		//time.Sleep(1 * time.Second)
-		if len(ag.AgentProximity) > 0 {
-			log.Printf("Nearby agents %v", ag.AgentProximity)
-		}
+
+		// if len(ag.AgentProximity) > 0 {
+		// 	log.Printf("Nearby agents %v", ag.AgentProximity)
+		// }
 
 		// Délibération
-		choice := ag.Deliberate(env)
+		choice, ag2 := ag.Deliberate(env)
 
 		// Action
-		if choice != MoveAct {
-			log.Printf("%s ,choice  %s ", ag.Id, choice)
-		}
-		ag.Act(env, choice)
+		// if choice != MoveAct {
+		// 	log.Printf("%s ,choice  %s ", ag.Id, choice)
+		// }
+		ag.Act(env, choice, ag2)
 
 		ag.SyncChan <- step
 	}
@@ -189,21 +190,14 @@ func (ag *Agent) SetPriority(nearby []*Agent) []*Agent {
 }
 
 // Fonction de délibération d'un agent
-func (ag *Agent) Deliberate(env *Environnement) ActionType {
+func (ag *Agent) Deliberate(env *Environnement) (act ActionType, agt2 *Agent) {
 	//TODO GESTION COMPUTER
 	env.Lock()
 	defer env.Unlock()
 
-	// if len(ag.AgentProximity) > 0 {
-	//log.Printf("NNNNNearby agents %v", nearbyAgents)
-	// }
-
-	// Si aucun agent est à proximité, l'agent décide de bouger
-	if len(ag.AgentProximity) == 0 {
-		//log.Printf("Agent %v has no nearby agents", nearbyAgents)
-		ag.ClearAction()
-		return MoveAct
-	}
+	// Par défaut, donc même si aucun agent est à proximité, l'agent décide de bouger
+	act = MoveAct
+	agt2 = nil
 
 	//TODO FONCTION SET PRIORITY
 	//priority := ag.SetPriority(nearbyAgents)
@@ -218,59 +212,83 @@ func (ag *Agent) Deliberate(env *Environnement) ActionType {
 				// Les deux agents sont sceptiques pu croyants: l'agent décide de bouger
 				case ag.TypeAgt == Sceptic:
 					if ag.Opinion == 0 && ag2.Opinion == 0 {
-						ag.ClearAction()
-						return MoveAct
+						act = MoveAct
 					}
 				case ag.TypeAgt == Believer:
 					if ag.Opinion == 1 && ag2.Opinion == 1 {
-						ag.ClearAction()
-						return MoveAct
+						act = MoveAct
 					}
 				// Les deux agents sont neutres
 				case ag.TypeAgt == Neutral:
 					// Si les deux agents ont une opinion neutre, l'agent décide de bouger
 					if ag.Opinion == 0.5 && ag2.Opinion == 0.5 {
-						ag.ClearAction()
-						return MoveAct
+						act = MoveAct
 					}
 					// TODO: autres cas!
 				}
 			}
-			// Si l'autre agent est d'un autre type: l'agent décide de discuter, les deux agents sont désormais occupés
-			ag.SetAction(DiscussAct)
-			ag2.SetAction(DiscussAct)
-			ag.Occupied = true
-			ag2.Occupied = true
-			return DiscussAct
+			// Si l'autre agent est d'un autre type: l'agent décide de discuter, les deux agents seront désormais occupés
+			act = DiscussAct
+			agt2 = &ag2
+		} else if rand.Intn(2) == 0 {
+			// Gestion aléatoire entre attendre et bouger
+			act = WaitAct
 		}
-		// Gestion aléatoire entre attendre et bouger
-		if rand.Intn(2) == 0 {
-			return WaitAct
-		}
-
 	}
-	return MoveAct
+	// Gestion des limites de temps pour une action: si l'action choisie correspond à l'action en cours on vérifie les limites
+	if ag.CurrentAction == act {
+		switch ag.CurrentAction {
+		case MoveAct:
+			// Si on a atteint la limite de mouvement on décide d'attendre et on réinitialise le compteur
+			if ag.MoveStepLimit <= ag.StepAction {
+				act = WaitAct
+				ag.StepAction = 0
+			}
+		case WaitAct:
+			// Si on a atteint la limite d'attente on décide d'attendre et on réinitialise le compteur
+			if ag.WaitStepLimit <= ag.StepAction {
+				act = MoveAct
+				ag.StepAction = 0
+			}
+		case DiscussAct:
+			// Si on a atteint la limite de dialogue on décide de bouger et on réinitialise le compteur
+			if ag.DialogStepLimit <= ag.StepAction {
+				act = MoveAct
+				ag.StepAction = 0
+				// On libère les deux agents engagés dans la conversation aussi
+				ag.Occupied = false
+				agt2.Occupied = false
+				agt2.CurrentAction = MoveAct
+				agt2.StepAction = 0
+				// log.Printf("Agent %s NO LONGER discussing with %s", ag.Id, agt2.Id)
+				agt2 = nil
+			}
+		}
+	} else {
+		// Sinon, l'action a changé et on réinitialise le compteur
+		ag.StepAction = 0
+	}
+	return
 }
 
 // Fonction d'action d'un agent
-func (ag *Agent) Act(env *Environnement, choice ActionType) {
+func (ag *Agent) Act(env *Environnement, choice ActionType, ag2 *Agent) {
+	// On incrémente automatiquement le compteur de boucles de l'action
+	ag.StepAction += 1
 	switch choice {
 	case MoveAct:
-		//log.Printf("%v", ag.Position)
+		ag.SetAction(MoveAct)
 		ag.SendToEnv(Message{Type: MoveMsg, Agent: ag})
-
 	case DiscussAct:
-		//ag.Discuter()
+		ag.Discuss(ag2)
 	case WaitAct:
-		ag.ClearAction()
+		ag.SetAction(WaitAct)
 	}
 }
 
 // Fonction qui met à jour l'action d'un agent
 func (ag *Agent) SetAction(action ActionType) {
 	ag.CurrentAction = action
-	// TODO: gérer les timers
-	ag.DialogStepLimit = 180 // 2 secondes à 60 FPS
 }
 
 // Fonction qui réinitialise l'action (en mettant l'agent en attente)
@@ -279,7 +297,18 @@ func (ag *Agent) ClearAction() {
 	ag.DialogStepLimit = 0
 }
 
-// Fonction d'action où l'agent prie pour augmenter sa croyance
+// Fonction d'action où l'agent engage un autre dans une discussion
+func (ag *Agent) Discuss(ag2 *Agent) {
+	// Les deux agents sont occupés
+	ag.Occupied = true
+	ag2.Occupied = true
+	// Les deux agents discutent
+	ag.SetAction(DiscussAct)
+	ag2.SetAction(DiscussAct)
+	log.Printf("Agent %s discussing with %s", ag.Id, ag2.Id)
+}
+
+// Fonction d'action où l'agent prie pour augmenter sa croyance: pas utilisée pour l'instant
 func (ag *Agent) Pray() {
 	ag.SetAction(PrayAct)
 }
@@ -292,32 +321,4 @@ func (ag *Agent) Eat() {
 // Fonction qui envoie un message à l'environnement via le channel de communication l'environnement
 func (ag *Agent) SendToEnv(msg Message) {
 	ag.Env.Communication <- msg
-}
-
-// Fontion qui vérifie s'il y a une collision entre un objet à la position x,y et les objets (horizontal)
-func CheckCollisionHorizontal(x, y float64, coliders []image.Rectangle) bool {
-	for _, colider := range coliders {
-		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
-			if x > 0 {
-				return true
-			} else if x < 0 {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// Fontion qui vérifie s'il y a une collision entre un objet à la position x,y et les objets (vertical)
-func CheckCollisionVertical(x, y float64, coliders []image.Rectangle) bool {
-	for _, colider := range coliders {
-		if colider.Overlaps(image.Rect(int(x), int(y), int(x)+16, int(y)+16)) {
-			if y > 0 {
-				return true
-			} else if y < 0 {
-				return true
-			}
-		}
-	}
-	return false
 }

@@ -147,7 +147,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) ([]a
 		agents[i] = ag.Agent{
 			Env:               env,
 			Id:                ag.IdAgent(fmt.Sprintf("Agent%d", i)),
-			Velocite:          rand.Float64(),
+			Velocite:          rand.Intn(100),
 			Acuite:            30.0, //float64(rand.Intn(10)),
 			Position:          validPositions[i],
 			Opinion:           rand.Float64(),
@@ -159,9 +159,11 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) ([]a
 			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
 			SyncChan:          make(chan ag.Message),
 			Img:               agentsImg,
-			MoveStepLimit:     2,
-			CurrentAction:     "Praying",
-			DialogStepLimit:   2,
+			CurrentAction:     ag.MoveAct,
+			MoveStepLimit:     rand.Intn(20) * 100,
+			DialogStepLimit:   rand.Intn(20) * 100,
+			WaitStepLimit:     rand.Intn(20) * 10,
+			StepAction:        0,
 		}
 		syncChans.Store(agents[i].ID(), agents[i].SyncChan)
 		env.AddAgent(agents[i])
@@ -292,7 +294,18 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	if sim.selected != nil {
 		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
 		y += 20
-		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogStepLimit : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t",
+		timeLeft := 0
+		switch sim.selected.CurrentAction {
+		case ag.MoveAct:
+			timeLeft = sim.selected.MoveStepLimit - sim.selected.StepAction
+		case ag.DiscussAct:
+			timeLeft = sim.selected.DialogStepLimit - sim.selected.StepAction
+		case ag.WaitAct:
+			timeLeft = sim.selected.WaitStepLimit - sim.selected.StepAction
+		default:
+			timeLeft = sim.selected.MoveStepLimit - sim.selected.StepAction
+		}
+		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogStepLimit : %d\n  CurrentAction : %s\n  Time to change action : %d \n  Occupied : %t",
 			sim.selected.Id,
 			sim.selected.TypeAgt,
 			sim.selected.Position.X,
@@ -301,7 +314,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			sim.selected.Vivant,
 			sim.selected.DialogStepLimit,
 			sim.selected.CurrentAction,
-			sim.selected.MoveStepLimit,
+			timeLeft,
 			sim.selected.Occupied,
 		)
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
@@ -342,10 +355,9 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 
 // Fonction d'affichage des boîtes de dialogue dans la fenêtre d'affichage
 func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
-	if agent.CurrentAction == "" || agent.DialogStepLimit <= 0 {
+	if agent.CurrentAction != ag.DiscussAct {
 		return
 	}
-
 	dialogWidth := 100
 	dialogHeight := 30
 	x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
@@ -398,35 +410,35 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		for i := range sim.agents {
+		// for i := range sim.agents {
 
-			if sim.agents[i].DialogStepLimit > 0 {
-				sim.agents[i].DialogStepLimit--
-				if sim.agents[i].DialogStepLimit == 0 {
-					sim.agents[i].ClearAction()
-				}
-			} else {
-				/*
-					if nearbyAgents, ok := sim.env.AgentProximity.Load(sim.agents[i].Id); ok {
-						log.Printf("Nearby agents of %s : %v", sim.agents[i].Id, nearbyAgents)
-					}
-
-				*/
-				/*
-					//sim.env.NearbyAgents(&ag)
-					switch sim.agents[i].CurrentAction {
-
-					case "Praying":
-						sim.agents[i].Pray()
-					case "Running":
-						sim.agents[i].Move()
-					case "Discuss":
-						//log.Printf("Agent %s is discussing", sim.agents[i].Id)
-						//sim.agents[i].Discuss()
-					}
-				*/
+		// 	if sim.agents[i].DialogStepLimit > 0 {
+		// 		sim.agents[i].DialogStepLimit--
+		// 		if sim.agents[i].DialogStepLimit == 0 {
+		// 			sim.agents[i].ClearAction()
+		// 		}
+		// 	} else {
+		/*
+			if nearbyAgents, ok := sim.env.AgentProximity.Load(sim.agents[i].Id); ok {
+				log.Printf("Nearby agents of %s : %v", sim.agents[i].Id, nearbyAgents)
 			}
-		}
+
+		*/
+		/*
+			//sim.env.NearbyAgents(&ag)
+			switch sim.agents[i].CurrentAction {
+
+			case "Praying":
+				sim.agents[i].Pray()
+			case "Running":
+				sim.agents[i].Move()
+			case "Discuss":
+				//log.Printf("Agent %s is discussing", sim.agents[i].Id)
+				//sim.agents[i].Discuss()
+			}
+		*/
+		// }
+		// }
 	}
 	return nil
 }
@@ -449,7 +461,7 @@ func (sim *Simulation) Run() error {
 				for {
 					c, _ := sim.syncChans.Load(agt.ID())
 					c.(chan ag.Message) <- msg                                // /!\ utilisation d'un "Type Assertion"
-					time.Sleep(time.Duration(sim.maxStep) * time.Millisecond) // "cool down", 1000 tps max...
+					time.Sleep(time.Duration(sim.maxStep) * time.Millisecond) // "cool down"
 					<-c.(chan ag.Message)
 				}
 			}(agt)

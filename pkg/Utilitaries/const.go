@@ -21,7 +21,7 @@ func IsInRectangle(pos Position, area Rectangle) bool {
 		centerY >= area.PositionUR.Y && centerY <= area.PositionDL.Y
 }
 
-const Maxspeed = 2.0
+const Maxspeed = 10.0
 
 type UniqueDirection struct {
 	Dx float64
