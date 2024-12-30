@@ -75,8 +75,38 @@ type Agent struct {
 	MaxLastTalked     int      // Taille maximale de la liste des derniers agents
 }
 
+func getRandomSubType(typeAgt TypeAgent) SubTypeAgent {
+	if typeAgt == Neutral {
+		return None
+	}
+
+	// Probabilidade de ter um subtipo (70% de chance)
+	if rand.Float64() > 0.7 {
+		return None
+	}
+
+	switch typeAgt {
+	case Believer:
+		// Para Believer: 60% Converter, 40% Pirate
+		if rand.Float64() < 0.6 {
+			return Converter
+		}
+		return Pirate
+	
+	case Sceptic:
+		// Para Sceptic: 60% Pirate, 40% Converter
+		if rand.Float64() < 0.6 {
+			return Pirate
+		}
+		return Converter
+	}
+
+	return None
+}
+
 func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, position ut.Position,
-	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, typeAgt TypeAgent, subTypeAgent SubTypeAgent, syncChan chan Message, img *ebiten.Image) *Agent {
+	opinion float64, charisme map[IdAgent]float64, relation map[IdAgent]float64, personalParameter float64, 
+	typeAgt TypeAgent, syncChan chan Message, img *ebiten.Image) *Agent {
 
 	//calcul des poids relatif pour chaque agents
 	poids_rel := make(map[IdAgent]float64, 0)
@@ -105,10 +135,43 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		poids_rel[i] = char
 	}
 
-	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
-		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
-		PersonalParameter: personalParameter, Poids_rel: poids_rel, Poids_abs: poids_abs,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: "Praying", DialogTimer: 10, Occupied: false, AgentProximity: make([]*Agent, 0), ObjsProximity: make([]*InterfaceObjet, 0), UseComputer: nil, LastComputer: nil, LastStatue: nil, TimeLastStatue: 999, CurrentWaypoint: nil, LastTalkedTo: make([]*Agent, 0), MaxLastTalked: 3}
+	// Determina o subtipo baseado no tipo do agente
+	subType := getRandomSubType(typeAgt)
+
+	// Log para debug
+	log.Printf("New agent created - ID: %s, Type: %s, SubType: %s", id, typeAgt, subType)
+
+	return &Agent{
+		Env: env,
+		Id: id,
+		Velocite: velocite,
+		Acuite: acuite,
+		Position: position,
+		Opinion: opinion,
+		Charisme: charisme,
+		Relation: relation,
+		PersonalParameter: personalParameter,
+		Poids_rel: poids_rel,
+		Poids_abs: poids_abs,
+		Vivant: true,
+		TypeAgt: typeAgt,
+		SubType: subType,  // Usando o subtipo determinado
+		SyncChan: syncChan,
+		Img: img,
+		MoveTimer: 60,
+		CurrentAction: "Running",
+		DialogTimer: 10,
+		Occupied: false,
+		AgentProximity: make([]*Agent, 0),
+		ObjsProximity: make([]*InterfaceObjet, 0),
+		UseComputer: nil,
+		LastComputer: nil,
+		LastStatue: nil,
+		TimeLastStatue: 999,
+		CurrentWaypoint: nil,
+		LastTalkedTo: make([]*Agent, 0),
+		MaxLastTalked: 3,
+	}
 }
 
 func (ag *Agent) ID() IdAgent {
@@ -192,24 +255,16 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 	env.Lock()
 	defer env.Unlock()
 
+
+
 	// Prioriser l'interaction avec les objets
 	if len(obj) > 0 {
 		for _, o := range obj {
 			switch concrete := (*o).(type) {
 			case *Computer:
-				if !concrete.Used {
-					switch concrete.Programm {
-					case "Go":
-						if ag.TypeAgt == Sceptic {
-							concrete.SetProgramm("None")
-							return ag.useComputer(concrete)
-						}
-					case "None":
-						if ag.TypeAgt == Believer {
-							concrete.SetProgramm("Go")
-							return ag.useComputer(concrete)
-						}
-					}
+				if !concrete.Used && (ag.LastComputer == nil || concrete.ID() != ag.LastComputer.ID()) {
+					ag.UseComputer = concrete // Apenas guarda a referência do computador
+					return "Computer"
 				}
 			case *Statue:
 				switch ag.TypeAgt {
@@ -217,19 +272,20 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 					continue
 				case Believer:
 					if ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 600 {
-						return ag.Prayer(concrete)
+						ag.LastStatue = concrete // Apenas guarda a referência da estátua
+						return "Pray"
 					}
-
 				case Neutral:
 					if rand.Float64() < 0.5 && (ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 350) {
-						return ag.Prayer(concrete)
+						ag.LastStatue = concrete // Apenas guarda a referência da estátua
+						return "Pray"
 					}
 				}
 			}
 		}
 	}
 
-	// Interagir avec d'autres agents
+	// Interagir com d'autres agents
 	if len(nearbyAgents) > 0 {
 		for i := range nearbyAgents {
 			// Obtém o ponteiro para o agente original do ambiente
@@ -310,25 +366,13 @@ func (ag *Agent) setOpinion(ag2 *Agent) {
 
 }
 func (ag *Agent) interactWithAgent(other *Agent) string {
-	// Dupla verificação de segurança
+	// Apenas verifica se é possível interagir
 	if other.Occupied || other.CurrentAction == "Discussing" {
 		return "Wait"
 	}
-
-	// Configura ambos os agentes para discussão
-	ag.SetAction("Discussing")
-	other.SetAction("Discussing")
-	ag.Occupied = true
-	other.Occupied = true
-
-	// Guarda referência do outro agente para visualização
+	
+	// Retorna "Discuss" com o agente alvo
 	ag.DiscussingWith = other
-	other.DiscussingWith = ag
-
-	// Adiciona ambos os agentes ao histórico um do outro
-	ag.addToTalkHistory(other)
-	other.addToTalkHistory(ag)
-
 	return "Discuss"
 }
 
@@ -351,21 +395,46 @@ func (ag *Agent) addToTalkHistory(other *Agent) {
 
 func (ag *Agent) Act(env *Environnement, choice string) {
 	if ag.CurrentAction != "Running" {
-		return //l'agent est occupés
+		return //l'agent est occupé
 	}
+	
 	switch choice {
 	case "Move":
-		//log.Printf("%v", ag.Position)
 		ag.SendToEnv(Message{Type: "Move", Agent: ag})
 
 	case "Computer":
-		ag.SetAction("Using Computer")
+		if ag.UseComputer != nil && ag.UseComputer.TryUse() {
+			ag.SetAction("Using Computer")
+			ag.Occupied = true
+			ag.LastComputer = ag.UseComputer
+		} else {
+			ag.UseComputer = nil
+		}
 
 	case "Pray":
-		ag.SetAction("Praying")
+		if ag.LastStatue != nil {
+			ag.SetAction("Praying")
+			ag.Occupied = true
+			ag.TimeLastStatue = 0
+		}
 
 	case "Discuss":
-		//ag.Discuter()
+		if ag.DiscussingWith != nil && !ag.DiscussingWith.Occupied {
+			ag.SetAction("Discussing")
+			ag.DiscussingWith.SetAction("Discussing")
+			
+			ag.Occupied = true
+			ag.DiscussingWith.Occupied = true
+			
+			ag.DiscussingWith.DiscussingWith = ag
+			
+			ag.addToTalkHistory(ag.DiscussingWith)
+			ag.DiscussingWith.addToTalkHistory(ag)
+		} else {
+			ag.DiscussingWith = nil
+			ag.ClearAction()
+		}
+
 	case "Wait":
 		ag.ClearAction()
 	}
@@ -377,14 +446,68 @@ func (ag *Agent) SetAction(action string) {
 }
 
 func (ag *Agent) ClearAction() {
-	if ag.CurrentAction == "Discussing" && ag.DiscussingWith != nil {
-		// Limpa também o estado do outro agente
-		ag.setOpinion(ag.DiscussingWith)
-		ag.DiscussingWith.CurrentAction = "Running"
-		ag.DiscussingWith.Occupied = false
-		ag.DiscussingWith.DiscussingWith = nil
-
+	switch ag.CurrentAction {
+	case "Discussing":
+		if ag.DiscussingWith != nil {
+			// Limpa também o estado do outro agente
+			ag.setOpinion(ag.DiscussingWith)
+			ag.DiscussingWith.CurrentAction = "Running"
+			ag.DiscussingWith.Occupied = false
+			ag.DiscussingWith.DiscussingWith = nil
+		}
+	
+	case "Praying":
+		log.Printf("Agent %v finished praying", ag.Id)
+		log.Printf("Agent Opinion before: %v", ag.Opinion)
+		if ag.TypeAgt == Believer {
+			ag.Opinion = math.Min(1.0, ag.Opinion + 0.05)
+		} else {
+			ag.Opinion = math.Min(1.0, ag.Opinion + 0.1)
+		}
+		ag.CheckType()
+		log.Printf("Agent Opinion after: %v", ag.Opinion)
+	
+	case "Using Computer":
+		log.Printf("Agent %v finished using computer", ag.Id)
+		log.Printf("Agent Opinion before: %v", ag.Opinion)
+		
+		currentProgram := ag.UseComputer.GetProgramm()
+		
+		switch ag.TypeAgt {
+		case Believer:
+			if currentProgram == "None" {
+				ag.UseComputer.SetProgramm("Go")
+				ag.Opinion = math.Min(1.0, ag.Opinion + 0.005)
+			} else if currentProgram == "Go" {
+				ag.Opinion = math.Min(1.0, ag.Opinion + 0.05)
+			}
+		
+		case Sceptic:
+			if currentProgram == "Go" {
+				ag.UseComputer.SetProgramm("None")
+				ag.Opinion = math.Max(0.0, ag.Opinion - 0.005)
+			} else if currentProgram == "None" {
+				ag.Opinion = math.Max(0.0, ag.Opinion - 0.05)
+			}
+		
+		case Neutral:
+			if currentProgram == "Go" {
+				ag.Opinion = math.Min(1.0, ag.Opinion + 0.05)
+			} else if currentProgram == "None" {
+				ag.Opinion = math.Max(0.0, ag.Opinion - 0.05)
+			}
+		}
+		
+		ag.CheckType()
+		log.Printf("Agent Opinion after: %v", ag.Opinion)
+		log.Printf("Computer program: %v", ag.UseComputer.GetProgramm())
+		
+		if ag.UseComputer != nil {
+			ag.UseComputer.Release()
+			ag.UseComputer = nil
+		}
 	}
+
 	ag.CurrentAction = "Running"
 	ag.DialogTimer = 0
 	ag.Occupied = false
@@ -408,18 +531,36 @@ func (env *Environnement) GetAgentById(id IdAgent) *Agent {
 	return nil
 }
 
-func (ag *Agent) CheckType() { //fonction qui permet de définir le type de l'agent en fonction de son opinion; à verifier tous les X top d'horloges
-	{
-		if ag.Opinion > 0.66 {
-			ag.TypeAgt = Believer
-			ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentBelieverImageFile)
-		} else if ag.Opinion < 0.33 {
-			ag.TypeAgt = Sceptic
-			ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentScepticImageFile)
+func (ag *Agent) CheckType() {
+	oldType := ag.TypeAgt
+	
+	// Atualiza o tipo baseado na opinião
+	if ag.Opinion > 0.66 {
+		ag.TypeAgt = Believer
+		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentBelieverImageFile)
+	} else if ag.Opinion < 0.33 {
+		ag.TypeAgt = Sceptic
+		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentScepticImageFile)
+	} else {
+		ag.TypeAgt = Neutral
+		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentNeutralImageFile)
+	}
+
+	// Se o tipo mudou, recalcula o subtipo
+	if oldType != ag.TypeAgt {
+		// Log para debug
+		log.Printf("Agent %v changed type from %v to %v", ag.Id, oldType, ag.TypeAgt)
+		log.Printf("Old subtype: %v", ag.SubType)
+
+		// Se virou Neutral, perde o subtipo
+		if ag.TypeAgt == Neutral {
+			ag.SubType = None
 		} else {
-			ag.TypeAgt = Neutral
-			ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentNeutralImageFile)
+			// Se era Neutral e virou outro tipo, ou se mudou entre Believer/Sceptic
+			ag.SubType = getRandomSubType(ag.TypeAgt)
 		}
+
+		log.Printf("New subtype: %v", ag.SubType)
 	}
 }
 

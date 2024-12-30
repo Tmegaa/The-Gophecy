@@ -39,6 +39,8 @@ const (
 	TilemapJSONFile        = "spawn.json"
 	DiscussionBubbleWidth  = 100
 	DiscussionBubbleHeight = 40
+	ProbabilityConverter = 0.2
+	ProbabilityPirate = 0.15
 )
 
 type Simulation struct {
@@ -158,9 +160,7 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 }
 
 func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []ag.Agent {
-
 	agents := make([]ag.Agent, config.NumAgents)
-
 	validPositions := getValidSpawnPositions(carte, 1)
 	visitationMap := ag.NewVisitationMap(validPositions)
 
@@ -172,20 +172,14 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
 	})
 
-	// for i := 0; i < config.NumAgents; i++ {
-	// 	agents[i] = *ag.NewAgent(&env, ag.IdAgent(fmt.Sprintf("Agent%d", i)), rand.Float64(), rand.Float64(), validPositions[i], rand.Float64(), make(map[ag.IdAgent]float64), make(map[ag.IdAgent]float64), rand.Float64(), []float64{rand.Float64(), rand.Float64()}, []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)], make(chan int), agentsImg)
-	// 	env.AddAgent(agents[i])
-	// }
-
 	//default image
 	agentsImg := loadImage(AssetsPath + AgentBelieverImageFile)
 
-	//i dont why we are creating agents like this and not using the function NewAgent
 	for i := 0; i < config.NumAgents; i++ {
 		// Gera valores aleatórios
-
 		Opinion := rand.Float64()
 
+		// Determina o tipo base do agente
 		var TypeChoosen ag.TypeAgent
 		if Opinion < 0.33 {
 			TypeChoosen = ag.Sceptic
@@ -194,6 +188,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		} else {
 			TypeChoosen = ag.Believer
 		}
+
 		id := ag.IdAgent(fmt.Sprintf("Agent%d", i))
 		velocite := rand.Float64()
 		acuite := 50.0
@@ -233,7 +228,6 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 			relation,
 			personalParameter,
 			TypeChoosen,
-			ag.None, // SubType padrão
 			make(chan ag.Message),
 			agentsImg,
 		)
@@ -438,15 +432,16 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	if sim.selected != nil {
 		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
 		y += 20
-		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Personal Param: %.2f\n  Opinion: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t\n  Last Prayer : %d",
+		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  SubType: %s\n  Personal Param: %.2f\n  Opinion: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t\n  Last Prayer : %d",
 			sim.selected.Id,
 			sim.selected.TypeAgt,
+			sim.selected.SubType,
 			sim.selected.PersonalParameter,
 			sim.selected.Opinion,
 			sim.selected.Vivant,
 			sim.selected.DialogTimer,
 			sim.selected.CurrentAction,
-			sim.selected.MoveTimer,
+			0,
 			sim.selected.Occupied,
 			sim.selected.TimeLastStatue,
 		)
@@ -548,13 +543,9 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 		opts.GeoM.Reset()
 		opts.GeoM.Translate(agent.Position.X, agent.Position.Y)
 
-		// Adiciona um efeito visual para agentes em discussão
-		if agent.CurrentAction == "Discussing" {
-			opts.ColorM.Scale(1.2, 1.2, 1.2, 1) // Torna o agente levemente mais brilhante
-		}
-
+		// Removido o efeito de luz para agentes em discussão
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
-		screen.DrawImage(subImg, &opts)
+			screen.DrawImage(subImg, &opts)
 
 		sim.drawDialogBox(screen, agent)
 	}
@@ -649,7 +640,7 @@ func (sim *Simulation) Update() error {
 					cursorX <= int(agent.Position.X+AgentImageSize) &&
 					cursorY >= int(agent.Position.Y) &&
 					cursorY <= int(agent.Position.Y+AgentImageSize) {
-					sim.selected = agent
+					sim.selected = sim.env.GetAgentById(agent.Id)
 					sim.selectedPC = nil
 					sim.selectionIndicator = ebiten.NewImage(AgentImageSize, AgentImageSize)
 					sim.selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
@@ -695,6 +686,12 @@ func (sim *Simulation) Update() error {
 					sim.agents[i].Occupied = false
 				}
 			}
+		}
+
+		// Atualiza o agente selecionado se existir
+		if sim.selected != nil {
+			// Atualiza a referência para garantir dados atualizados
+			sim.selected = sim.env.GetAgentById(sim.selected.Id)
 		}
 	}
 	return nil
