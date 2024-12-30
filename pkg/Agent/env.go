@@ -14,6 +14,7 @@ var lsType = []TypeAgent{Sceptic, Believer, Neutral}
 type MessageType string
 
 const (
+	LoopMsg       MessageType = "StartLoop"
 	PerceptionMsg MessageType = "Perception"
 	NearbyMsg     MessageType = "Nearby"
 	MoveMsg       MessageType = "Move"
@@ -180,10 +181,10 @@ func (env *Environnement) Move(ag *Agent) {
 
 	ag.ClearAction()
 
-	if ag.MoveTimer > 0 {
+	if ag.MoveStepLimit > 0 {
 
-		ag.MoveTimer -= 1
-		//log.Printf("MoveTimer %v", ag.MoveTimer)
+		ag.MoveStepLimit -= 1
+		//log.Printf("MoveStepLimit %v", ag.MoveStepLimit)
 		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) || CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
 			log.Printf("Collision")
 			return
@@ -220,6 +221,6 @@ func (env *Environnement) Move(ag *Agent) {
 	ag.Position.Dy = directions[randIdx].Dy
 
 	log.Printf("Agent %s moved to %v", ag.Id, ag.Position)
-	ag.MoveTimer = 60
+	ag.MoveStepLimit = 60
 
 }

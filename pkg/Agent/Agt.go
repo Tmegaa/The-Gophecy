@@ -67,9 +67,9 @@ type Agent struct {
 	SubType           SubTypeAgent        // agent de sous-type pirate, évangéliste ou sans sous-type
 	SyncChan          chan Message        // channel propre à l'agent pour communiquer avec l'environnement
 	Img               *ebiten.Image       // image à afficher sur l'interface graphique
-	MoveTimer         int                 // limite de nombre de ticks pour une action de mouvement
+	MoveStepLimit     int                 // limite de nombre de ticks pour une action de mouvement
+	DialogStepLimit   int                 // limite de nombre de ticks pour une action de conversation
 	CurrentAction     ActionType          // action qui est en train d'être réalisée (soit dernière décision prise)
-	DialogTimer       int                 // limite de nombre de ticks pour une action de conversation
 	Occupied          bool                // indique si un agent est engagé dans une action bloquante (une conversation par exemple)
 	AgentProximity    []Agent             // liste des agents qui sont proches
 }
@@ -89,7 +89,8 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	return &Agent{Env: env, Id: id, Velocite: velocite, Acuite: acuite,
 		Position: position, Opinion: opinion, Charisme: charisme, Relation: relation,
 		PersonalParameter: personalParameter, Poid_rel: poid_rel,
-		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveTimer: 60, CurrentAction: MoveAct, DialogTimer: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
+		Vivant: true, TypeAgt: typeAgt, SubType: subTypeAgent, SyncChan: syncChan, Img: img, MoveStepLimit: 20, CurrentAction: MoveAct, DialogStepLimit: 10, Occupied: false, AgentProximity: make([]Agent, 0)}
+
 }
 
 // Fonction qui renvoie d'ID d'un agent
@@ -106,12 +107,12 @@ func (ag *Agent) AgtPosition() ut.Position {
 func (ag *Agent) Start() {
 	log.Printf("%s lancement...\n", ag.Id)
 	env := ag.Env
-	//var step int
+
 	// Boucle de simulation pour notre agent
 	for {
+		step := <-ag.SyncChan
 		// Perception
 		ag.Percept(env)
-		//step = <-ag.SyncChan
 		//time.Sleep(1 * time.Second)
 		if len(ag.AgentProximity) > 0 {
 			log.Printf("Nearby agents %v", ag.AgentProximity)
@@ -126,8 +127,7 @@ func (ag *Agent) Start() {
 		}
 		ag.Act(env, choice)
 
-		// time.Sleep(15 * time.Millisecond)
-		//ag.SyncChan <- step
+		ag.SyncChan <- step
 	}
 
 }
@@ -270,13 +270,13 @@ func (ag *Agent) Act(env *Environnement, choice ActionType) {
 func (ag *Agent) SetAction(action ActionType) {
 	ag.CurrentAction = action
 	// TODO: gérer les timers
-	ag.DialogTimer = 180 // 2 secondes à 60 FPS
+	ag.DialogStepLimit = 180 // 2 secondes à 60 FPS
 }
 
 // Fonction qui réinitialise l'action (en mettant l'agent en attente)
 func (ag *Agent) ClearAction() {
 	ag.CurrentAction = WaitAct
-	ag.DialogTimer = 0
+	ag.DialogStepLimit = 0
 }
 
 // Fonction d'action où l'agent prie pour augmenter sa croyance

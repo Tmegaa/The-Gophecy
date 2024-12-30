@@ -56,7 +56,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
 	env := createEnvironment(*carte, config.NumAgents)
-	agents := createAgents(&env, carte, config.NumAgents)
+	agents, syncChans := createAgents(&env, carte, config.NumAgents)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
 	if err != nil {
@@ -70,6 +70,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 		maxStep:     10, // Possible de l'ajouter à la configuration
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
+		syncChans:   syncChans,
 		carte:       *carte,
 		ctx:         ctx,
 		cancel:      cancel,
@@ -121,9 +122,10 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 }
 
 // Fonction qui crée et rajoute à la carte les nouveaux agents
-func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag.Agent {
+func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) ([]ag.Agent, sync.Map) {
 	agentsImg := loadImage(AssetsPath + AgentImageFile)
 	agents := make([]ag.Agent, NumAgents)
+	syncChans := sync.Map{}
 
 	validPositions := getValidSpawnPositions(carte, 1)
 
@@ -157,13 +159,14 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 			TypeAgt:           []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}[rand.Intn(3)],
 			SyncChan:          make(chan ag.Message),
 			Img:               agentsImg,
-			MoveTimer:         2,
+			MoveStepLimit:     2,
 			CurrentAction:     "Praying",
-			DialogTimer:       2,
+			DialogStepLimit:   2,
 		}
+		syncChans.Store(agents[i].ID(), agents[i].SyncChan)
 		env.AddAgent(agents[i])
 	}
-	return agents
+	return agents, syncChans
 }
 
 // Fonction qui affiche une image sur la fenêtre d'affichage
@@ -289,16 +292,16 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	if sim.selected != nil {
 		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
 		y += 20
-		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t",
+		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Position: (%.2f, %.2f)\n  Personal Param: %.2f\n  Alive: %t\n  DialogStepLimit : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t",
 			sim.selected.Id,
 			sim.selected.TypeAgt,
 			sim.selected.Position.X,
 			sim.selected.Position.Y,
 			sim.selected.PersonalParameter,
 			sim.selected.Vivant,
-			sim.selected.DialogTimer,
+			sim.selected.DialogStepLimit,
 			sim.selected.CurrentAction,
-			sim.selected.MoveTimer,
+			sim.selected.MoveStepLimit,
 			sim.selected.Occupied,
 		)
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
@@ -339,7 +342,7 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 
 // Fonction d'affichage des boîtes de dialogue dans la fenêtre d'affichage
 func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
-	if agent.CurrentAction == "" || agent.DialogTimer <= 0 {
+	if agent.CurrentAction == "" || agent.DialogStepLimit <= 0 {
 		return
 	}
 
@@ -397,9 +400,9 @@ func (sim *Simulation) Update() error {
 
 		for i := range sim.agents {
 
-			if sim.agents[i].DialogTimer > 0 {
-				sim.agents[i].DialogTimer--
-				if sim.agents[i].DialogTimer == 0 {
+			if sim.agents[i].DialogStepLimit > 0 {
+				sim.agents[i].DialogStepLimit--
+				if sim.agents[i].DialogStepLimit == 0 {
 					sim.agents[i].ClearAction()
 				}
 			} else {
@@ -438,6 +441,19 @@ func (sim *Simulation) Run() error {
 			go sim.agents[i].Start()
 		}
 		sim.start = time.Now()
+
+		// Lancement de l'orchestration de tous les agents
+		for _, agt := range sim.agents {
+			go func(agt ag.Agent) {
+				msg := ag.Message{Type: ag.LoopMsg, Agent: &agt}
+				for {
+					c, _ := sim.syncChans.Load(agt.ID())
+					c.(chan ag.Message) <- msg                                // /!\ utilisation d'un "Type Assertion"
+					time.Sleep(time.Duration(sim.maxStep) * time.Millisecond) // "cool down", 1000 tps max...
+					<-c.(chan ag.Message)
+				}
+			}(agt)
+		}
 	}()
 
 	if err := ebiten.RunGame(sim); err != nil && err != ebiten.Termination {
