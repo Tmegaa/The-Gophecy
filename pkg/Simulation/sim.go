@@ -64,6 +64,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	}
 
 	return &Simulation{
+		// TODO: changer à pointeur pour éviter les copies
 		env:         env,
 		agents:      agents,
 		maxStep:     10, // Possible de l'ajouter à la configuration
@@ -139,7 +140,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 	// 	env.AddAgent(agents[i])
 	// }
 
-	//i dont why we are creating agents like this and not using the function NewAgent
+	// TODO: utiliser fonction NewAgent
 	for i := 0; i < NumAgents; i++ {
 		agents[i] = ag.Agent{
 			Env:               env,
@@ -165,6 +166,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, NumAgents int) []ag
 	return agents
 }
 
+// Fonction qui affiche une image sur la fenêtre d'affichage
 func loadImage(path string) *ebiten.Image {
 	img, _, err := ebitenutil.NewImageFromFile(path)
 	if err != nil {
@@ -173,6 +175,7 @@ func loadImage(path string) *ebiten.Image {
 	return img
 }
 
+// Fonction qui charge la carte des tiles
 func loadTilemapJSON(path string) *tile.TilemapJSON {
 	tilemap, err := tile.NewTilemapJSON(path)
 	if err != nil {
@@ -181,6 +184,7 @@ func loadTilemapJSON(path string) *tile.TilemapJSON {
 	return tilemap
 }
 
+// Fonction qui charge les paquets de tiles
 func loadTilesets(tilemapJSON *tile.TilemapJSON) []tile.Tileset {
 	tilesets, err := tilemapJSON.GenTilesets()
 	if err != nil {
@@ -189,8 +193,10 @@ func loadTilesets(tilemapJSON *tile.TilemapJSON) []tile.Tileset {
 	return tilesets
 }
 
+// Fonction de génération des bornes d'une zone de collision (où deux éléments ne peuvent pas coexister)
 func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []image.Rectangle {
 	var coliders []image.Rectangle
+	// Gestion des couches de l'affichage
 	for layerIdx, layer := range tilemapJSON.Layers {
 		for i, tileID := range layer.Data {
 			if tileID == 0 || layerIdx == 0 {
@@ -206,8 +212,9 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 	return coliders
 }
 
+// Fonction qui affiche les éléments dans la fenêtre d'affichage
 func (sim *Simulation) Draw(screen *ebiten.Image) {
-	// Desenha o fundo e os agentesrgba(57,61,125,255)
+	// Dessine l'arrière-plan et les agents rgba(57,61,125,255)
 	screen.Fill(color.RGBA{57, 61, 125, 255})
 	sim.drawMap(screen)
 	sim.drawAgents(screen)
@@ -216,6 +223,7 @@ func (sim *Simulation) Draw(screen *ebiten.Image) {
 	sim.drawInfoPanel(screen)
 }
 
+// Fonction qui affiche la zone où un agent peut percevoir d'autres agents ou des objets (rectangle)
 func (sim Simulation) drawAcuite(screen *ebiten.Image) {
 	for _, agent := range sim.agents {
 
@@ -246,26 +254,27 @@ func (sim Simulation) drawAcuite(screen *ebiten.Image) {
 	}
 }
 
+// Fonction qui affiche les informations de la simulation (nombre d'agents, temps écoulé...) dans un cadre de la fenêtre d'affichage
 func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	panelX, panelY := 0, 0
 	panelWidth, panelHeight := 240, WindowHeight-20
 	padding := 10
 
-	// Desenha o painel de fundo
+	// Dessine le panneau du fond
 	vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
 
-	// Título do painel
+	// Titre du panneau
 	ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
 
 	y := panelY + 30
 
-	// Informações da simulação
+	// Informations sur la simulation
 	elapsed := time.Since(sim.start)
 	simInfo := fmt.Sprintf("Elapsed: %s", elapsed.Round(time.Second))
 	ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
 	y += 40
 
-	// Contagem de agentes por tipo
+	// Nombre d'agents par type
 	ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
 	y += 20
 	agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
@@ -276,7 +285,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	}
 	y += 20
 
-	// Informações do agente selecionado
+	// Informations sur l'agent sélectionné
 	if sim.selected != nil {
 		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
 		y += 20
@@ -296,8 +305,10 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	}
 }
 
+// Fonction d'affichage de la carte dans la fenêtre d'affichage
 func (sim *Simulation) drawMap(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
+	// Gestion par couche
 	for layerIdx, layer := range sim.carte.TilemapJSON.Layers {
 		for i, tileID := range layer.Data {
 			if tileID == 0 {
@@ -312,8 +323,10 @@ func (sim *Simulation) drawMap(screen *ebiten.Image) {
 	}
 }
 
+// Fonction d'affichage des agents dans la fenêtre d'affichage
 func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
+	// Gestion par agent
 	for _, agent := range sim.agents {
 		opts.GeoM.Translate(agent.Position.X, agent.Position.Y)
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
@@ -324,6 +337,7 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 	}
 }
 
+// Fonction d'affichage des boîtes de dialogue dans la fenêtre d'affichage
 func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	if agent.CurrentAction == "" || agent.DialogTimer <= 0 {
 		return
@@ -334,45 +348,48 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
 	y := int(agent.Position.Y) - dialogHeight - 5
 
-	// Desenha o fundo da caixa de diálogo
+	// Dessine l'arrière-plan de la boîte de dialogue
 	vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), color.RGBA{255, 255, 255, 200}, false)
 
-	// Desenha a borda da caixa de diálogo
+	// Dessine la bordure de la boîte de dialogue
 	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
-	// Escreve o texto da ação
+	// Écrit le texte de l'action
 	text.Draw(screen, string(agent.CurrentAction), sim.dialogFont, x+5, y+20, color.Black)
 }
 
+// Fonction d'affichage des bornes d'une zone de collision dans la fenêtre d'affichage
 func (sim *Simulation) drawColliders(screen *ebiten.Image) {
 	for _, colider := range sim.carte.Coliders {
 		vector.StrokeRect(screen, float32(colider.Min.X), float32(colider.Min.Y), float32(colider.Dx()), float32(colider.Dy()), 1.0, color.RGBA{0, 0, 0, 0}, true)
 	}
 }
 
+// Fonction qui retourne les dimentions de la fenêtre d'affichage
 func (sim *Simulation) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return WindowWidth, WindowHeight
 }
 
+// Fonction de mise à jour de la simulation
 func (sim *Simulation) Update() error {
 	select {
 	case <-sim.ctx.Done():
 		return ebiten.Termination
 	default:
-		//Detection des nearby agents
+		// Detection des agents proches
 
-		//log.Printf("Agents proches détectés: %v", sim.env.AgentProximity)
-		// Posição do cursor
+		// log.Printf("Agents proches détectés: %v", sim.env.AgentProximity)
+		// Position du curseur
 		cursorX, cursorY := ebiten.CursorPosition()
 
-		// Detecta clique
+		// Détection d'un clic
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			for i := range sim.agents {
 				agent := &sim.agents[i]
-				// Verifica se o clique está dentro da área do agente
+				// Vérifie si le clic se situe dans la zone agent
 				if cursorX >= int(agent.Position.X) && cursorX <= int(agent.Position.X+AgentImageSize) &&
 					cursorY >= int(agent.Position.Y) && cursorY <= int(agent.Position.Y+AgentImageSize) {
-					sim.selected = agent // Define o agente selecionado
+					sim.selected = agent // Définit l'agent sélectionné
 					break
 				}
 			}
@@ -411,8 +428,9 @@ func (sim *Simulation) Update() error {
 	return nil
 }
 
+// Fonction qui fait tourner la simulation
 func (sim *Simulation) Run() error {
-	defer sim.cancel() // Ensure context is canceled when Run() exits
+	defer sim.cancel() // On s'assure que le contexte est annulé lorsque Run() se termine
 
 	go sim.env.Listen()
 	go func() {

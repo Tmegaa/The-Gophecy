@@ -6,20 +6,21 @@ import (
 	"path"
 )
 
-// data we want for one layer in our list of layers
+// Données que nous voulons pour une couche dans notre liste de couches
 type TilemapLayerJSON struct {
-	Data   []int `json:"data"`
-	Width  int   `json:"width"`
-	Height int   `json:"height"`
-	Name  string `json:"name"`
+	Data   []int  `json:"data"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	Name   string `json:"name"`
 }
 
-// all layers in a tilemap
+// Toutes les couches dans une carte de tiles
 type TilemapJSON struct {
-	Layers []TilemapLayerJSON `json:"layers"`
-	Tilesets  []map[string]any `json:"tilesets"`
+	Layers   []TilemapLayerJSON `json:"layers"`
+	Tilesets []map[string]any   `json:"tilesets"`
 }
 
+// Fonction de génération des paquets de tiles
 func (t *TilemapJSON) GenTilesets() ([]Tileset, error) {
 
 	tilesets := make([]Tileset, 0)
@@ -29,7 +30,7 @@ func (t *TilemapJSON) GenTilesets() ([]Tileset, error) {
 
 		tileset, err := NewTileset(tilesetPath, int(tilesetData["firstgid"].(float64)))
 		if err != nil {
-			
+
 			return nil, err
 		}
 		tilesets = append(tilesets, tileset)
@@ -37,7 +38,7 @@ func (t *TilemapJSON) GenTilesets() ([]Tileset, error) {
 	return tilesets, nil
 }
 
-// opens the file, parses it, and returns the json object + potential error
+// Ouvre le fichier, l'analyse et renvoie l'objet json et erreur potentielle
 func NewTilemapJSON(filepath string) (*TilemapJSON, error) {
 	contents, err := os.ReadFile(filepath)
 	if err != nil {

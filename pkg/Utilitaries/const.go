@@ -13,7 +13,7 @@ type Rectangle struct {
 }
 
 func IsInRectangle(pos Position, area Rectangle) bool {
-	// Calcula o centro do agente
+	// Calcule le centre d'un agent
 	centerX := pos.X + 16/2
 	centerY := pos.Y + 16/2
 
@@ -31,4 +31,3 @@ type UniqueDirection struct {
 type Direction struct {
 	direction []UniqueDirection
 }
-
