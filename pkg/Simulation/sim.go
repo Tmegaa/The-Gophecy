@@ -122,7 +122,7 @@ func loadMap() *carte.Carte {
 
 func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet {
 	obj := make([]ag.InterfaceObjet, NumComputers+NumStatues)
-	
+
 	for i := 0; i < NumComputers; i++ {
 		obj[i] = ag.NewComputer(
 			env,
@@ -194,7 +194,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		velocite := rand.Float64()
 		acuite := 50.0
 		position := validPositions[i]
-		personalParameter := rand.Float64() * 4.0
+		personalParameter := 0.1 + rand.Float64()*4.0 - 0.1
 		// Cria mapa de carisma
 		charisme := make(map[ag.IdAgent]float64)
 		//charisme[id] = rand.Float64()
@@ -274,7 +274,7 @@ func generateStatues(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []i
 			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 2 || layerIdx == 4 {
 				continue
 			}
-			
+
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -292,7 +292,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 4 || layerIdx == 3 {
 				continue
 			}
-			
+
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -300,7 +300,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			computersPositions = append(computersPositions, image.Rect(x, y, x+img.Bounds().Dx(), y+img.Bounds().Dy()))
 		}
 	}
-	
+
 	return computersPositions
 }
 
@@ -311,7 +311,7 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			if tileID == 0 || layerIdx == 0 {
 				continue
 			}
-			
+
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)

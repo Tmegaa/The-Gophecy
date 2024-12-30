@@ -430,18 +430,19 @@ func (env *Environnement) SetPoids() {
 		}
 		//on applique la propriété de normalisation des poids absolus
 		for _, ag2 := range env.Ags {
-			pair := ut.Pair{}
+			pairAg := ut.Pair{}
 			if sum > 0 {
 				ag.Poids_abs[ag2.Id] = ag.Poids_abs[ag2.Id] / sum
 			} else {
 				ag.Poids_abs[ag2.Id] = 0
 			}
 			if ag.Id != ag2.Id {
-				pair.Second = ag.Poids_abs[ag2.Id] / (ag.Poids_abs[ag2.Id] + ag.Poids_abs[ag.Id])
-				pair.First = ag.Poids_abs[ag.Id] / (ag.Poids_abs[ag2.Id] + ag.Poids_abs[ag.Id])
+				pairAg.Second = ag.Poids_abs[ag2.Id] / (ag.Poids_abs[ag2.Id] + ag.Poids_abs[ag.Id])
+				pairAg.First = ag.Poids_abs[ag.Id] / (ag.Poids_abs[ag2.Id] + ag.Poids_abs[ag.Id])
 			}
-			ag.Poids_rel[ag2.Id] = pair
+			ag.Poids_rel[ag2.Id] = pairAg
 		}
+		
 	}
 }
 
