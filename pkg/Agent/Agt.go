@@ -81,18 +81,21 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 	//calcul des poids relatif pour chaque agents
 	poids_rel := make(map[IdAgent]float64, 0)
 	poids_abs := make(map[IdAgent]float64, 0)
+	min := 0.01
+	max := 1.0
+
 	if len(env.Ags) == 0 {
-		poids_abs[id] = rand.Float64()
+		poids_abs[id] = min + rand.Float64()*(max-min)
 		poids_rel[id] = poids_abs[id] / (poids_abs[id] + poids_abs[id])
 	} else {
 
 		for _, v := range env.Ags {
 			// pour chaque agent déja exisatant de l'environnement, on affect un poids absolu aléatoire et on calcule le poids relatif
-			poids_abs[v.Id] = rand.Float64()
+			poids_abs[v.Id] = min + rand.Float64()*(max-min)
 			poids_rel[v.Id] = poids_abs[v.Id] / (poids_abs[id] + poids_abs[v.Id])
 
 			// on affecte les poids absolu et relatif de l'agent que l'on vient de créer à chaque agent déja existant
-			v.Poids_abs[id] = rand.Float64()
+			v.Poids_abs[id] = min + rand.Float64()*(max-min)
 			v.Poids_rel[id] = v.Poids_abs[id] / (v.Poids_abs[id] + poids_abs[id])
 		}
 	}
