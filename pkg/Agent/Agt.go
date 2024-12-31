@@ -83,7 +83,7 @@ type Agent struct {
 	UseComputer       *Computer           // Ordinateur en cours d'utilisation
 	LastComputer      *Computer           // Dernier ordinateur utilisé
 	LastStatue        *Statue             // Dernière statue utilisée
-	TimeLastStatue    int                 // Temps écoulé depuis la dernière utilisation d'une statue
+	TimeLastStatue    time.Time           // Date-time de la dernière utilisation d'une statue
 	HeatMap           *VisitationMap      // Carte des endroits visités
 	CurrentWaypoint   *ut.Position        // Point actuel de patrouille pour les agents Neutral
 	MovementStrategy  MovementStrategy    // Stratégie de mouvement de l'agent
@@ -164,7 +164,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		UseComputer:       nil,
 		LastComputer:      nil,
 		LastStatue:        nil,
-		TimeLastStatue:    999,
+		TimeLastStatue:    time.Now(),
 		CurrentWaypoint:   nil,
 		LastTalkedTo:      make([]*Agent, 0),
 		MaxLastTalked:     3,
@@ -311,12 +311,12 @@ func (ag *Agent) tryUseObjects(obj []*InterfaceObjet) ActionType {
 			case Sceptic:
 				continue
 			case Believer:
-				if ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 600 {
+				if ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || time.Since(ag.TimeLastStatue) > 6000*time.Millisecond {
 					ag.LastStatue = concrete
 					return PrayAct
 				}
 			case Neutral:
-				if rand.Float64() < 0.5 && (ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || ag.TimeLastStatue > 350) {
+				if rand.Float64() < 0.5 && (ag.LastStatue == nil || ag.LastStatue.ID() != concrete.ID() || time.Since(ag.TimeLastStatue) > 3500*time.Millisecond) {
 					ag.LastStatue = concrete
 					return PrayAct
 				}
@@ -330,7 +330,7 @@ func (ag *Agent) tryUseObjects(obj []*InterfaceObjet) ActionType {
 func (ag *Agent) Prayer(statue *Statue) ActionType {
 	ag.LastStatue = statue
 	ag.Occupied = true
-	ag.TimeLastStatue = 0
+	ag.TimeLastStatue = time.Now()
 	return PrayAct
 }
 
@@ -374,7 +374,7 @@ func (ag *Agent) shouldInteract(other *Agent) bool {
 
 // Fonction qui fait évoluer les opinions de deux agents en discussion
 func (ag *Agent) setOpinion(ag2 *Agent) {
-	// Un agent scéptique qui parle à un croyant va augmenter sa croyance et à l'inverse
+	// Un agent sceptique qui parle à un croyant va diminuer sa croyance et à l'inverse
 	if ag.TypeAgt == Sceptic && ag2.TypeAgt == Believer {
 		ag.Opinion = ag.Opinion - 0.05
 		ag2.Opinion = ag2.Opinion + 0.05
@@ -450,7 +450,7 @@ func (ag *Agent) Act(env *Environnement, choice ActionType) {
 		if ag.LastStatue != nil {
 			ag.SetAction(PrayAct)
 			ag.Occupied = true
-			ag.TimeLastStatue = 0
+			ag.TimeLastStatue = time.Now()
 		}
 
 	case DiscussAct:

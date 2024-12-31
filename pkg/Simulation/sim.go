@@ -451,7 +451,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	if sim.selected != nil {
 		ebitenutil.DebugPrintAt(screen, "Agent sélectionné:", panelX+padding, y)
 		y += 20
-		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Sous-Type: %s\n  Paramètre Personnel: %.2f\n  Opinion: %.2f\n  Vivant: %t\n  Temps de Dialogue: %d\n  Action: %s\n  Stratégie de mouvement: %s \n  Occupé : %t\n  Dernière prière : %d",
+		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Sous-Type: %s\n  Paramètre Personnel: %.2f\n  Opinion: %.2f\n  Vivant: %t\n  Temps de Dialogue: %d\n  Action: %s\n  Stratégie de mouvement: %s\n  Occupé : %t\n  Dernière prière : %.2f",
 			sim.selected.Id,
 			sim.selected.TypeAgt,
 			sim.selected.SubType,
@@ -462,7 +462,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			sim.selected.CurrentAction,
 			sim.selected.MovementStrategy,
 			sim.selected.Occupied,
-			sim.selected.TimeLastStatue,
+			time.Since(sim.selected.TimeLastStatue).Seconds(),
 		)
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
 		y += 180
@@ -709,11 +709,8 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		// Mettre à jour deux timers et les états
+		// Mettre à jour du timer et les états
 		for i := range sim.agents {
-			if sim.agents[i].TimeLastStatue >= 0 && sim.agents[i].TypeAgt == ag.Believer {
-				sim.agents[i].TimeLastStatue++
-			}
 			if sim.agents[i].DialogTimer > 0 {
 				sim.agents[i].DialogTimer--
 				if sim.agents[i].DialogTimer == 0 {

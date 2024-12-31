@@ -36,16 +36,16 @@ func ShowMenu() SimulationConfig {
 	fmt.Println("3 - Center of Mass")
 	fmt.Println("----------------------------------------")
 
-	config.BelieverMovement = ag.MovementStrategy(getStrategyInput("Believer"))
-	config.ScepticMovement = ag.MovementStrategy(getStrategyInput("Sceptic"))
-	config.NeutralMovement = ag.MovementStrategy(getStrategyInput("Neutral"))
+	config.BelieverMovement = ag.MovementStrategy(getStrategyInput(ag.Believer))
+	config.ScepticMovement = ag.MovementStrategy(getStrategyInput(ag.Sceptic))
+	config.NeutralMovement = ag.MovementStrategy(getStrategyInput(ag.Neutral))
 
 	fmt.Println("\nRésumé de la configuration:")
 	fmt.Printf("Nombre d'agents: %d\n", config.NumAgents)
 	fmt.Printf("Durée: %v\n", config.SimulationTime)
-	fmt.Printf("Stratégie Believer: %s\n", config.BelieverMovement)
-	fmt.Printf("Stratégie Sceptic: %s\n", config.ScepticMovement)
-	fmt.Printf("Stratégie Neutral: %s\n", config.NeutralMovement)
+	fmt.Printf("Stratégie %ss: %s\n", ag.Believer, config.BelieverMovement)
+	fmt.Printf("Stratégie %ss: %s\n", ag.Sceptic, config.ScepticMovement)
+	fmt.Printf("Stratégie %ss: %s\n", ag.Neutral, config.NeutralMovement)
 	fmt.Println("----------------------------------------")
 
 	return config
@@ -69,13 +69,13 @@ func getIntInput(prompt string) int {
 }
 
 // Fonction qui affiche le type d'un agent et récupère un entier rentré par l'utilisateur
-func getStrategyInput(agentType string) int {
+func getStrategyInput(agentType ag.TypeAgent) int {
 	var input string
 	var value int
 	var err error
 
 	for {
-		fmt.Printf("Stratégie pour %s (0-3): ", agentType)
+		fmt.Printf("Stratégie pour %ss (0-3): ", agentType)
 		fmt.Scanln(&input)
 		value, err = strconv.Atoi(input)
 		if err == nil && value >= 0 && value <= 3 {
