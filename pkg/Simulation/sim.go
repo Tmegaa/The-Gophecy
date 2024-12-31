@@ -62,7 +62,7 @@ type Simulation struct {
 	cancel             context.CancelFunc
 	dialogFont         font.Face
 	selectionIndicator *ebiten.Image
-	opinionAverages   []float64
+	opinionAverages    []float64
 }
 
 // NewSimulation initializes a new simulation
@@ -125,7 +125,7 @@ func loadMap() *carte.Carte {
 
 func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet {
 	obj := make([]ag.InterfaceObjet, NumComputers+NumStatues)
-	
+
 	for i := 0; i < NumComputers; i++ {
 		obj[i] = ag.NewComputer(
 			env,
@@ -277,7 +277,7 @@ func generateStatues(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []i
 			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 2 || layerIdx == 4 {
 				continue
 			}
-			
+
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -295,7 +295,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			if tileID == 0 || layerIdx == 0 || layerIdx == 1 || layerIdx == 4 || layerIdx == 3 {
 				continue
 			}
-			
+
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -303,7 +303,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			computersPositions = append(computersPositions, image.Rect(x, y, x+img.Bounds().Dx(), y+img.Bounds().Dy()))
 		}
 	}
-	
+
 	return computersPositions
 }
 
@@ -314,7 +314,7 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 			if tileID == 0 || layerIdx == 0 {
 				continue
 			}
-			
+
 			x, y := (i%layer.Width)*TileSize, (i/layer.Width)*TileSize
 			img := tilesets[layerIdx].Img(tileID)
 			offsetY := -(img.Bounds().Dy() + TileSize)
@@ -608,8 +608,8 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
 	// Prepara o texto baseado na ação
-	displayText := agent.CurrentAction
-	if agent.CurrentAction == "Discussing" {
+	displayText := string(agent.CurrentAction)
+	if agent.CurrentAction == ag.DiscussAct {
 		// Adiciona um indicador do tipo de agente na discussão
 		displayText = fmt.Sprintf("%s (%s)", agent.CurrentAction, agent.TypeAgt)
 	}

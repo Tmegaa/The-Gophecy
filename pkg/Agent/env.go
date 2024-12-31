@@ -24,8 +24,18 @@ func (m MovementStrategy) String() string {
 	return [...]string{"Random", "Patrol", "HeatMap", "CenterOfMass"}[m]
 }
 
+// Liste des types de messages possibles
+type MessageType string
+
+const (
+	LoopMsg       MessageType = "StartLoop"
+	PerceptionMsg MessageType = "Perception"
+	NearbyMsg     MessageType = "Nearby"
+	MoveMsg       MessageType = "Move"
+)
+
 type Message struct {
-	Type         string
+	Type         MessageType
 	NearbyAgents []*Agent
 	Agent        *Agent
 }
@@ -41,7 +51,9 @@ type Environnement struct {
 	ObjectProximity *sync.Map    //key = IDAgent et value = []*Objet -> Liste des objets proches
 }
 
+// Fonction d'initialisation d'un nouvel environnement
 func NewEnvironment(ags []*Agent, carte carte.Carte, objs []InterfaceObjet) (env *Environnement) {
+	// Initialisation du compteur du nombre d'agents par type
 	counter := &sync.Map{}
 
 	for _, val := range lsType {
@@ -51,6 +63,7 @@ func NewEnvironment(ags []*Agent, carte carte.Carte, objs []InterfaceObjet) (env
 	return &Environnement{Ags: ags, Objs: objs, Communication: make(chan Message, 100), NbrAgents: counter, Carte: carte, AgentProximity: &sync.Map{}}
 }
 
+// Fonction qui ajoute un nouvel agent dans l'environnement
 func (env *Environnement) AddAgent(ag *Agent) {
 	env.Ags = append(env.Ags, ag)
 
@@ -70,15 +83,19 @@ func (env *Environnement) AddAgent(ag *Agent) {
 	}
 }
 
+// Fonction qui envoie la liste des agents proches pour un agent donné
 func (env *Environnement) NearbyAgents(ag *Agent) []*Agent {
 	nearbyAgents := make([]*Agent, 0)
 	pos := ag.AgtPosition()
+
+	// Création du rectangle de perception
 	var area ut.Rectangle
 	area.PositionDL.X = pos.X - ag.Acuite
 	area.PositionDL.Y = pos.Y + ag.Acuite
 	area.PositionUR.X = pos.X + ag.Acuite
 	area.PositionUR.Y = pos.Y - ag.Acuite
 
+	// On itère sur tous les agents de la carte pour voir si un agent est dans le rectangle de perception
 	for _, ag2 := range env.Ags {
 		if ag.ID() != ag2.ID() && ut.IsInRectangle(ag2.AgtPosition(), area) {
 			nearbyAgents = append(nearbyAgents, ag2)
@@ -87,16 +104,19 @@ func (env *Environnement) NearbyAgents(ag *Agent) []*Agent {
 	return nearbyAgents
 }
 
+// Fonction qui envoie la liste des objets proches pour un agent donné
 func (env *Environnement) NearbyObjects(ag *Agent) []*InterfaceObjet {
 	nearbyObjects := make([]*InterfaceObjet, 0)
 	pos := ag.AgtPosition()
+
+	// Création du rectangle de perception
 	var area ut.Rectangle
 	area.PositionDL.X = pos.X - ag.Acuite
 	area.PositionDL.Y = pos.Y + ag.Acuite
 	area.PositionUR.X = pos.X + ag.Acuite
 	area.PositionUR.Y = pos.Y - ag.Acuite
 
-	//for PC
+	// Pour les ordinateurs: On itère sur tous les objets de la carte pour voir si un objet est dans le rectangle de perception
 	for _, pc := range env.Objs {
 
 		PCposition := pc.ObjPosition()
@@ -112,15 +132,16 @@ func (env *Environnement) NearbyObjects(ag *Agent) []*InterfaceObjet {
 	return nearbyObjects
 }
 
+// Fonction de l'environnement qui gère la communication avec les agents via les channels
 func (env *Environnement) Listen() {
 	go func() {
 		for msg := range env.Communication {
 			switch {
-			case msg.Type == "Perception":
+			case msg.Type == PerceptionMsg:
 				near := env.NearbyAgents(msg.Agent)
-				env.SendToAgent(msg.Agent, Message{Type: "Nearby", NearbyAgents: near})
+				env.SendToAgent(msg.Agent, Message{Type: NearbyMsg, NearbyAgents: near})
 
-			case msg.Type == "Move":
+			case msg.Type == MoveMsg:
 				env.Move(msg.Agent)
 
 			}
@@ -128,26 +149,31 @@ func (env *Environnement) Listen() {
 	}()
 }
 
+// Fonction d'envoi d'un message à un agent via son channel
 func (env *Environnement) SendToAgent(agt *Agent, msg Message) {
 	agt.SyncChan <- msg
 }
 
+// Fonction de movement d'un agent dans l'environnement (soit mise à jour de sa position)
 func (env *Environnement) Move(ag *Agent) {
 	ag.ClearAction()
 
+	// On reste dans la même direction
 	if ag.MoveTimer > 0 {
 		ag.MoveTimer -= 1
+		// Si une collision a lieu on s'arrête
 		if CheckCollisionHorizontal((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) ||
 			CheckCollisionVertical((ag.Position.X+ag.Position.Dx), (ag.Position.Y+ag.Position.Dy), ag.Env.Carte.Coliders) {
 			return
 		}
 
+		// Sinon on continue de bouger
 		ag.Position.X += ag.Position.Dx
 		ag.Position.Y += ag.Position.Dy
 		return
 	}
 
-	// Usa a estratégia definida para cada tipo de agente
+	// Utilise la stratégie définie pour chaque type d'agent
 	switch ag.MovementStrategy {
 	case RandomMovement:
 		env.moveRandom(ag)
@@ -158,7 +184,7 @@ func (env *Environnement) Move(ag *Agent) {
 	case CenterOfMassMovement:
 		env.moveToCenterOfMass(ag)
 	default:
-		env.moveRandom(ag) // Fallback para movimento aleatório
+		env.moveRandom(ag) // Fallback pour le mouvement aléatoire
 	}
 
 	ag.MoveTimer = 60
@@ -189,20 +215,20 @@ func (env *Environnement) moveWithHeatMap(ag *Agent) {
 
 // Mouvement de patrouille pour les Neutrals
 func (env *Environnement) movePatrol(ag *Agent) {
-	// Chance de mudar de direção mesmo se não chegou ao waypoint
+	// Possibilité de changer de direction même si vous n'avez pas atteint le waypoint
 	if ag.CurrentWaypoint != nil && rand.Float64() < 0.02 {
 		ag.CurrentWaypoint = nil
 	}
 
-	// Se não tem waypoint atual ou está próximo do waypoint atual
+	// S'il n'y a pas de waypoint actuel ou s'il est proche du waypoint actuel
 	if ag.CurrentWaypoint == nil || ut.Distance(ag.Position, *ag.CurrentWaypoint) < 5.0 {
 		if len(ag.HeatMap.Positions) > 0 {
-			// Tenta encontrar um waypoint válido
-			maxAttempts := 10 // Limite de tentativas para evitar loop infinito
+			// Essaye de trouver un waypoint valide
+			maxAttempts := 10 // Limiter les tentatives pour éviter une boucle infinie
 			attempts := 0
 
 			for attempts < maxAttempts {
-				// Seleciona 3 pontos aleatórios
+				// Sélectionne 3 points aléatoires
 				numChoices := 3
 				choices := make([]ut.Position, 0, numChoices)
 
@@ -210,7 +236,7 @@ func (env *Environnement) movePatrol(ag *Agent) {
 					randomIdx := rand.Intn(len(ag.HeatMap.Positions))
 					pos := ag.HeatMap.Positions[randomIdx]
 
-					// Verifica se o caminho até o ponto está livre
+					// Vérifie si le chemin vers le point est dégagé
 					if isPathClear(ag.Position, pos, env.Carte.Coliders) {
 						choices = append(choices, pos)
 					}
@@ -223,20 +249,20 @@ func (env *Environnement) movePatrol(ag *Agent) {
 					for _, pos := range choices {
 						dist := ut.Distance(ag.Position, pos)
 
-						// Ajusta os critérios de distância
+						// Ajuste les critères de distance
 						distScore := 0.0
-						if dist < 50 { // Reduz distância mínima
+						if dist < 50 { // Réduit la distance minimale
 							distScore = dist / 50
-						} else if dist > 200 { // Reduz distância máxima
+						} else if dist > 200 { // Réduit la distance maximale
 							distScore = 2 - (dist-200)/200
 						} else {
 							distScore = 1.0
 						}
 
-						// Adiciona fator de desvio de objetos
+						// Ajoute un facteur de déviation des objets
 						obstacleScore := getObstacleAvoidanceScore(pos, env.Carte.Coliders)
 
-						// Combina os scores
+						// Combine les scores
 						randomFactor := 0.5 + rand.Float64()
 						finalScore := (distScore*0.4 + obstacleScore*0.4) * randomFactor
 
@@ -255,7 +281,7 @@ func (env *Environnement) movePatrol(ag *Agent) {
 				attempts++
 			}
 
-			// Se não encontrou um waypoint válido, usa movimento aleatório
+			// S'il n'a pas trouvé de waypoint valide, utilisez un mouvement aléatoire
 			if ag.CurrentWaypoint == nil {
 				env.moveRandom(ag)
 				return
@@ -263,27 +289,27 @@ func (env *Environnement) movePatrol(ag *Agent) {
 		}
 	}
 
-	// Movimento em direção ao waypoint
+	// Déplacement vers le waypoint
 	if ag.CurrentWaypoint != nil {
 		dx := ag.CurrentWaypoint.X - ag.Position.X
 		dy := ag.CurrentWaypoint.Y - ag.Position.Y
 
-		// Reduz a variação aleatória
-		dx += (rand.Float64()*2 - 1) * 2 // Reduz para ±2 pixels
+		// Réduit la variation aléatoire
+		dx += (rand.Float64()*2 - 1) * 2 // Réduit à ±2 pixels
 		dy += (rand.Float64()*2 - 1) * 2
 
 		length := math.Sqrt(dx*dx + dy*dy)
 		if length > 0 {
-			speed := ut.Maxspeed * (0.9 + rand.Float64()*0.2) // Velocidade mais consistente
+			speed := ut.Maxspeed * (0.9 + rand.Float64()*0.2) // Vitesse plus constante
 			ag.Position.Dx = (dx / length) * speed
 			ag.Position.Dy = (dy / length) * speed
 		}
 	}
 }
 
-// Função auxiliar para verificar se o caminho está livre
+// Fonction auxiliaire pour vérifier si le chemin est clair
 func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
-	// Verifica alguns pontos ao longo do caminho
+	// Vérifie quelques points en cours de route
 	steps := 10
 	dx := (end.X - start.X) / float64(steps)
 	dy := (end.Y - start.Y) / float64(steps)
@@ -442,7 +468,7 @@ func (env *Environnement) SetPoids() {
 			}
 			ag.Poids_rel[ag2.Id] = pairAg
 		}
-		
+
 	}
 }
 
