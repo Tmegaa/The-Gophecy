@@ -8,11 +8,12 @@ import (
 )
 
 type VisitationMap struct {
-	Positions []ut.Position     // Liste des positions valides
-	Visits    map[int]int       // Carte de comptage des visites (index -> compteur)
+	Positions []ut.Position // Liste des positions valides
+	Visits    map[int]int   // Carte de comptage des visites (index -> compteur)
 	mutex     sync.RWMutex
 }
 
+// Création d'une nouvelle carte de positions visitées
 func NewVisitationMap(validPositions []ut.Position) *VisitationMap {
 	visits := make(map[int]int)
 	for i := range validPositions {
@@ -25,6 +26,7 @@ func NewVisitationMap(validPositions []ut.Position) *VisitationMap {
 	}
 }
 
+// Fonction qui augmente le compteur de visites d'une position
 func (vm *VisitationMap) IncrementVisit(pos ut.Position) {
 	vm.mutex.Lock()
 	defer vm.mutex.Unlock()
@@ -36,15 +38,16 @@ func (vm *VisitationMap) IncrementVisit(pos ut.Position) {
 	}
 }
 
+// Fonction qui renvoie les positions les moins visitées
 func (vm *VisitationMap) GetLeastVisitedPositions(currentPos ut.Position, limit int) []ut.Position {
 	vm.mutex.RLock()
 	defer vm.mutex.RUnlock()
 
 	// Crée un tableau de paires (index, compteur)
 	type visitPair struct {
-		index   int
-		count   int
-		dist    float64
+		index int
+		count int
+		dist  float64
 	}
 	pairs := make([]visitPair, 0, len(vm.Positions))
 
@@ -71,8 +74,7 @@ func (vm *VisitationMap) GetLeastVisitedPositions(currentPos ut.Position, limit 
 	return result
 }
 
-// distances
-
+// Fonction qui renvoie l'index de la position la plus proche
 func (vm *VisitationMap) findNearestPositionIndex(pos ut.Position) int {
 	minDist := math.MaxFloat64
 	nearestIdx := -1

@@ -26,6 +26,7 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 )
 
+// Constantes de la simulation
 const (
 	TileSize               = 24
 	AgentImageSize         = 16
@@ -65,9 +66,7 @@ type Simulation struct {
 	opinionAverages    []float64
 }
 
-// NewSimulation initializes a new simulation
-// pkg/Simulation/simulation.go
-
+// Fonction qui initialize une nouvelle simulation
 func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
@@ -101,16 +100,19 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	}
 }
 
+// Fonction qui initialise la fenêtre d'affichage de la simulation
 func initializeWindow() {
 	ebiten.SetWindowSize(WindowWidth, WindowHeight)
 	ebiten.SetWindowTitle("Simulation")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 }
 
+// Fonction qui crée et retourne un nouvel environnement
 func createEnvironment(carte carte.Carte, NumAgents int) ag.Environnement {
 	return *ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
+// Fonction qui charge la carte
 func loadMap() *carte.Carte {
 	tilemapImg := loadImage(AssetsPath + TilemapImage)
 	tilemapJSON := loadTilemapJSON(MapsPath + TilemapJSONFile)
@@ -119,10 +121,10 @@ func loadMap() *carte.Carte {
 	computers := generateComputers(tilemapJSON, tilesets)
 	statues := generateStatues(tilemapJSON, tilesets)
 
-	// générer des ordinateurs.
 	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders, computers, statues)
 }
 
+// Fonction qui charge les objets dans la carte
 func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet {
 	obj := make([]ag.InterfaceObjet, NumComputers+NumStatues)
 
@@ -146,6 +148,7 @@ func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet 
 	return obj
 }
 
+// Fonction qui renvoie une liste des positions possibles que peuvent prendre les objets ou les agents
 func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 	validPositions := []ut.Position{}
 	for layerIdx, layer := range carte.TilemapJSON.Layers {
@@ -164,6 +167,7 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 	return validPositions
 }
 
+// Fonction qui crée et rajoute à la carte les nouveaux agents
 func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []ag.Agent {
 	agents := make([]ag.Agent, config.NumAgents)
 	validPositions := getValidSpawnPositions(carte, 1)
@@ -177,14 +181,14 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
 	})
 
-	//default image
+	// Image par défaut
 	agentsImg := loadImage(AssetsPath + AgentBelieverImageFile)
 
 	for i := 0; i < config.NumAgents; i++ {
-		// Gera valores aleatórios
+		// Génère des valeurs aléatoires
 		Opinion := rand.Float64()
 
-		// Determina o tipo base do agente
+		// Détermine le type de base de l'agent
 		var TypeChoosen ag.TypeAgent
 		if Opinion < 0.33 {
 			TypeChoosen = ag.Sceptic
@@ -198,14 +202,13 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		acuite := 50.0
 		position := validPositions[i]
 		personalParameter := 0.1 + rand.Float64()*4.0 - 0.1
-		// Cria mapa de carisma
+		// Crée une carte de charisme
 		charisme := make(map[ag.IdAgent]float64)
-		//charisme[id] = rand.Float64()
 
-		// Cria mapa de relações
+		// Crée une carte des relations entre agents
 		relation := make(map[ag.IdAgent]float64)
 
-		// Define estratégia de movimento
+		// Définit la stratégie de mouvement
 		var strategy ag.MovementStrategy
 		switch TypeChoosen {
 		case ag.Believer:
@@ -219,7 +222,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 			agentsImg = loadImage(AssetsPath + AgentNeutralImageFile)
 		}
 
-		// Cria o agente usando NewAgent
+		// Créez l'agent à l'aide de NewAgent
 		agent := ag.NewAgent(
 			env,
 			id,
@@ -235,7 +238,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 			agentsImg,
 		)
 
-		// Configura campos adicionais
+		// Configure les champs supplémentaires
 		agent.HeatMap = visitationMap
 		agent.MovementStrategy = strategy
 		agents[i] = *agent
@@ -246,6 +249,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 	return agents
 }
 
+// Fonction qui affiche une image sur la fenêtre d'affichage
 func loadImage(path string) *ebiten.Image {
 	img, _, err := ebitenutil.NewImageFromFile(path)
 	if err != nil {
@@ -254,6 +258,7 @@ func loadImage(path string) *ebiten.Image {
 	return img
 }
 
+// Fonction qui charge la carte des tiles
 func loadTilemapJSON(path string) *tile.TilemapJSON {
 	tilemap, err := tile.NewTilemapJSON(path)
 	if err != nil {
@@ -262,6 +267,7 @@ func loadTilemapJSON(path string) *tile.TilemapJSON {
 	return tilemap
 }
 
+// Fonction qui charge les jeux de tiles
 func loadTilesets(tilemapJSON *tile.TilemapJSON) []tile.Tileset {
 	tilesets, err := tilemapJSON.GenTilesets()
 	if err != nil {
@@ -270,6 +276,7 @@ func loadTilesets(tilemapJSON *tile.TilemapJSON) []tile.Tileset {
 	return tilesets
 }
 
+// Fonction de génération des statues
 func generateStatues(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []image.Rectangle {
 	var computersPositions []image.Rectangle
 	for layerIdx, layer := range tilemapJSON.Layers {
@@ -288,6 +295,7 @@ func generateStatues(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []i
 	return computersPositions
 }
 
+// Fonction de génération des ordinateurs
 func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []image.Rectangle {
 	var computersPositions []image.Rectangle
 	for layerIdx, layer := range tilemapJSON.Layers {
@@ -307,6 +315,7 @@ func generateComputers(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 	return computersPositions
 }
 
+// Fonction de génération des bornes d'une zone de collision (où deux éléments ne peuvent pas coexister)
 func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) []image.Rectangle {
 	var coliders []image.Rectangle
 	for layerIdx, layer := range tilemapJSON.Layers {
@@ -325,8 +334,9 @@ func generateColliders(tilemapJSON *tile.TilemapJSON, tilesets []tile.Tileset) [
 	return coliders
 }
 
+// Fonction qui affiche les éléments dans la fenêtre d'affichage
 func (sim *Simulation) Draw(screen *ebiten.Image) {
-
+	// Dessine l'arrière-plan et les agents rgba(57,61,125,255)
 	screen.Fill(color.RGBA{57, 61, 125, 255})
 	sim.drawMap(screen)
 	sim.drawAgents(screen)
@@ -336,6 +346,7 @@ func (sim *Simulation) Draw(screen *ebiten.Image) {
 	sim.drawSelectionIndicator(screen)
 }
 
+// Fonction qui affiche dans la fenêtre d'affichage un indicateur de la séléction de l'utilisateur
 func (sim *Simulation) drawSelectionIndicator(screen *ebiten.Image) {
 	if sim.selected != nil {
 		x := sim.selected.Position.X
@@ -354,6 +365,7 @@ func (sim *Simulation) drawSelectionIndicator(screen *ebiten.Image) {
 	}
 }
 
+// Fonction qui affiche la zone où un agent peut percevoir d'autres agents ou des objets (rectangle)
 func (sim Simulation) drawAcuite(screen *ebiten.Image) {
 	for _, agent := range sim.agents {
 
@@ -384,6 +396,7 @@ func (sim Simulation) drawAcuite(screen *ebiten.Image) {
 	}
 }
 
+// Fonction qui affiche les informations de la simulation (nombre d'agents, temps écoulé...) dans un cadre de la fenêtre d'affichage
 func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	panelX, panelY := 0, 0
 	panelWidth, panelHeight := 240, WindowHeight-20
@@ -403,7 +416,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
 	y += 40
 
-	// Comptage des agents par type
+	// Nombre d'agents par type
 	ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
 	y += 20
 	agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
@@ -454,7 +467,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
 		y += 180
 
-		// Informações sobre discussão atual
+		// Informations sur la discussion actuelle
 		if sim.selected.DiscussingWith != nil {
 			discussInfo := fmt.Sprintf("  Discussing with:\n  ID: %s\n  Type: %s",
 				sim.selected.DiscussingWith.Id,
@@ -464,7 +477,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			y += 60
 		}
 
-		// Histórico de conversas
+		// Historique des conversations
 		ebitenutil.DebugPrintAt(screen, "  Last conversations with:", panelX+padding, y)
 		y += 20
 		for i, lastTalked := range sim.selected.LastTalkedTo {
@@ -474,20 +487,20 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		}
 		y += 20
 
-		// Relações com outros agentes
+		// Relations avec les autres agents
 		ebitenutil.DebugPrintAt(screen, "Relations:", panelX+padding, y)
 		y += 20
 
-		// Colete as chaves do mapa
+		// Récupére les clés de la carte
 		keys := make([]string, 0, len(sim.selected.Relation))
 		for otherId := range sim.selected.Relation {
 			keys = append(keys, string(otherId))
 		}
 
-		// Ordene as chaves
+		// Trie les clés
 		sort.Strings(keys)
 
-		// Itere sobre as chaves ordenadas
+		// Itére sur les clés triées
 		for _, otherId := range keys {
 			relation := sim.selected.Relation[ag.IdAgent(otherId)]
 			relationType := getRelationType(relation)
@@ -514,8 +527,10 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	}
 }
 
+// Fonction d'affichage de la carte dans la fenêtre d'affichage
 func (sim *Simulation) drawMap(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
+	// Gestion par couche
 	for layerIdx, layer := range sim.carte.TilemapJSON.Layers {
 		for i, tileID := range layer.Data {
 			if tileID == 0 {
@@ -530,19 +545,20 @@ func (sim *Simulation) drawMap(screen *ebiten.Image) {
 	}
 }
 
+// Fonction d'affichage des agents dans la fenêtre d'affichage
 func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
 
-	// Primeiro, desenha as linhas de conexão entre agentes em discussão
+	// Premièrement, il trace les lignes de connexion entre les agents en discussion.
 	for _, agent := range sim.agents {
-		if agent.CurrentAction == "Discussing" && agent.DiscussingWith != nil {
-			// Desenha uma linha conectando os agentes que estão discutindo
+		if agent.CurrentAction == ag.DiscussAct && agent.DiscussingWith != nil {
+			// Trace une ligne reliant les agents qui se discutent
 			startX := agent.Position.X + float64(AgentImageSize)/2
 			startY := agent.Position.Y + float64(AgentImageSize)/2
 			endX := agent.DiscussingWith.Position.X + float64(AgentImageSize)/2
 			endY := agent.DiscussingWith.Position.Y + float64(AgentImageSize)/2
 
-			// Escolhe a cor da linha baseado nos tipos dos agentes
+			// Choisissez la couleur de la ligne en fonction des types d'agents
 			lineColor := color.RGBA{150, 150, 150, 255}
 			vector.StrokeLine(
 				screen,
@@ -557,12 +573,12 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 		}
 	}
 
-	// Depois desenha os agentes
+	// Puis affiche les agents
 	for _, agent := range sim.agents {
 		opts.GeoM.Reset()
 		opts.GeoM.Translate(agent.Position.X, agent.Position.Y)
 
-		// Removido o efeito de luz para agentes em discussão
+		// Suppression de l'effet d'éclairage pour les agents en discussion
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
 		screen.DrawImage(subImg, &opts)
 
@@ -570,6 +586,7 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 	}
 }
 
+// Fonction d'affichage des boîtes de dialogue dans la fenêtre d'affichage
 func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	if agent.CurrentAction == "" || agent.DialogTimer <= 0 {
 		return
@@ -580,44 +597,44 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
 	y := int(agent.Position.Y) - dialogHeight - 5
 
-	// Desenha o fundo da caixa de diálogo
+	// Dessiner l'arrière-plan de la boîte de dialogue
 	bgColor := color.RGBA{255, 255, 255, 200}
 
-	// Muda a cor do fundo baseado na ação
+	// Changer la couleur d'arrière-plan en fonction de l'action
 	switch agent.CurrentAction {
-	case "Discussing":
-		// Cor diferente para discussão
+	case ag.DiscussAct:
+		// Couleur différente pour chaque type de discussion
 		switch agent.TypeAgt {
 		case ag.Believer:
-			bgColor = color.RGBA{200, 230, 255, 200} // Azul claro
+			bgColor = color.RGBA{200, 230, 255, 200} // Bleu clair
 		case ag.Sceptic:
-			bgColor = color.RGBA{255, 200, 200, 200} // Vermelho claro
+			bgColor = color.RGBA{255, 200, 200, 200} // Rouge clair
 		case ag.Neutral:
-			bgColor = color.RGBA{200, 255, 200, 200} // Verde claro
+			bgColor = color.RGBA{200, 255, 200, 200} // Vert clair
 		}
-	case "Praying":
-		bgColor = color.RGBA{255, 255, 200, 200} // Amarelo claro
-	case "Using Computer":
-		bgColor = color.RGBA{200, 200, 255, 200} // Roxo claro
+	case ag.PrayAct:
+		bgColor = color.RGBA{255, 255, 200, 200} // Jaune clair
+	case ag.ComputerAct:
+		bgColor = color.RGBA{200, 200, 255, 200} // Violet clair
 	}
 
-	// Desenha o fundo da caixa de diálogo
+	// Dessine l'arrière-plan de la boîte de dialogue
 	vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), bgColor, false)
 
-	// Desenha a borda da caixa de diálogo
+	// Dessine la bordure de la boîte de dialogue
 	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
-	// Prepara o texto baseado na ação
+	// Prépare un texte basé sur l'action
 	displayText := string(agent.CurrentAction)
 	if agent.CurrentAction == ag.DiscussAct {
-		// Adiciona um indicador do tipo de agente na discussão
+		// Ajoute un indicateur de type d'agent à la discussion
 		displayText = fmt.Sprintf("%s (%s)", agent.CurrentAction, agent.TypeAgt)
 	}
 
-	// Desenha o texto da ação
+	// Écrit le texte de l'action
 	text.Draw(screen, displayText, sim.dialogFont, x+5, y+20, color.Black)
 
-	// Adiciona uma barra de progresso para o DialogTimer
+	// Ajouter une barre de progression pour le DialogTimer
 	if agent.DialogTimer > 0 {
 		progressWidth := float32(dialogWidth-10) * (float32(agent.DialogTimer) / 180.0)
 		vector.DrawFilledRect(
@@ -632,27 +649,30 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	}
 }
 
+// Fonction d'affichage des bornes d'une zone de collision dans la fenêtre d'affichage
 func (sim *Simulation) drawColliders(screen *ebiten.Image) {
 	for _, colider := range sim.carte.Coliders {
 		vector.StrokeRect(screen, float32(colider.Min.X), float32(colider.Min.Y), float32(colider.Dx()), float32(colider.Dy()), 1.0, color.RGBA{0, 0, 0, 0}, true)
 	}
 }
 
+// Fonction qui retourne les dimentions de la fenêtre d'affichage
 func (sim *Simulation) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return WindowWidth, WindowHeight
 }
 
+// Fonction de mise à jour de la simulation
 func (sim *Simulation) Update() error {
 	select {
 	case <-sim.ctx.Done():
 		return ebiten.Termination
 	default:
-		// Detecção de cliques
+		// Position du curseur
 		cursorX, cursorY := ebiten.CursorPosition()
 
-		// Detecta clique do mouse
+		// Détection d'un clic
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			// Verifica clique em agentes
+			// Vérifie si le clic se situe dans la zone agent
 			for i := range sim.agents {
 				agent := &sim.agents[i]
 				if cursorX >= int(agent.Position.X) &&
@@ -667,7 +687,7 @@ func (sim *Simulation) Update() error {
 				}
 			}
 
-			// Verifica clique em computadores
+			// Vérifie si le clic se situe sur un ordinateur
 			for i := range sim.objets {
 				if sim.objets[i].GetType() != ag.ComputerType {
 					continue
@@ -689,7 +709,7 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		// Atualização dos timers e estados
+		// Mettre à jour deux timers et les états
 		for i := range sim.agents {
 			if sim.agents[i].TimeLastStatue >= 0 && sim.agents[i].TypeAgt == ag.Believer {
 				sim.agents[i].TimeLastStatue++
@@ -707,13 +727,13 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		// Atualiza o agente selecionado se existir
+		// Met à jour l'agent sélectionné s'il existe
 		if sim.selected != nil {
-			// Atualiza a referência para garantir dados atualizados
+			// Met à jour la référence pour garantir que les données soient à jour
 			sim.selected = sim.env.GetAgentById(sim.selected.Id)
 		}
 
-		// Calcular a média de opiniões
+		// Calcule l'avis moyen
 		totalOpinion := 0.0
 		for _, agent := range sim.agents {
 			totalOpinion += agent.Opinion
@@ -724,8 +744,9 @@ func (sim *Simulation) Update() error {
 	return nil
 }
 
+// Fonction qui fait tourner la simulation
 func (sim *Simulation) Run() error {
-	defer sim.cancel()
+	defer sim.cancel() // On s'assure que le contexte est annulé lorsque Run() se termine
 
 	go sim.env.Listen()
 	go func() {
@@ -761,7 +782,7 @@ func (sim *Simulation) Run() error {
 	averageOpinion := totalOpinion / float64(len(sim.agents))
 	fmt.Printf("\nOpinion moyenne des agents : %.2f\n", averageOpinion)
 
-	// Gerar e salvar o gráfico
+	// Générer et enregistrer le graphique
 	xValues := make([]float64, len(sim.opinionAverages))
 	for i := range xValues {
 		xValues[i] = float64(i)
@@ -789,12 +810,13 @@ func (sim *Simulation) Run() error {
 	return nil
 }
 
+// Fonction qui retourne le type de relation en fonction d'un nombre qui les identifie
 func getRelationType(relation float64) string {
 	switch {
 	case relation == 0.75:
 		return "Ennemi"
 	case relation == 1.0:
-		return "Pas de liens direct"
+		return "Pas de lien direct"
 	case relation == 1.25:
 		return "Amis"
 	case relation == 1.5:

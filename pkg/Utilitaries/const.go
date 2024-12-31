@@ -26,8 +26,9 @@ type Rectangle struct {
 	PositionUR Position
 }
 
+// Fonction qui vérifie si une position est bien dans un rectangle donné
 func IsInRectangle(pos Position, area Rectangle) bool {
-	// Calculate the center of the agent
+	// Calcule le centre d'un agent
 	centerX := pos.X + 16/2
 	centerY := pos.Y + 16/2
 

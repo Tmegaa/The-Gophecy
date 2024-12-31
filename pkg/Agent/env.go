@@ -318,7 +318,7 @@ func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
 		x := start.X + dx*float64(i)
 		y := start.Y + dy*float64(i)
 
-		// Verifica colisão no ponto
+		// Vérifier la collision au point
 		for _, colider := range coliders {
 			if colider.Overlaps(image.Rect(int(x)-8, int(y)-8, int(x)+8, int(y)+8)) {
 				return false
@@ -328,11 +328,11 @@ func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
 	return true
 }
 
-// Função para calcular score de desvio de obstáculos
+// Fonction pour calculer le score d'évitement d'obstacles
 func getObstacleAvoidanceScore(pos ut.Position, coliders []image.Rectangle) float64 {
 	minDistance := math.MaxFloat64
 
-	// Encontra a distância ao obstáculo mais próximo
+	// Trouve la distance jusqu'à l'obstacle le plus proche
 	for _, colider := range coliders {
 		centerX := float64(colider.Min.X+colider.Max.X) / 2
 		centerY := float64(colider.Min.Y+colider.Max.Y) / 2
@@ -343,7 +343,7 @@ func getObstacleAvoidanceScore(pos ut.Position, coliders []image.Rectangle) floa
 		}
 	}
 
-	// Normaliza o score (quanto mais longe dos obstáculos, melhor)
+	// Normalise le score (plus on s'éloigne des obstacles, mieux c'est)
 	if minDistance < 30 {
 		return 0
 	}
@@ -442,19 +442,20 @@ func (env *Environnement) moveToCenterOfMass(ag *Agent) {
 	}
 }
 
+// Fonction qui définit les poids des agents
 func (env *Environnement) SetPoids() {
 	minWeight := 0.01
 	maxWeight := 1.0
 	for _, ag := range env.Ags {
 		sum := 0.0
 		for _, ag2 := range env.Ags {
-			// pour chaque agent déja existant de l'environnement,
+			// Pour chaque agent déjà existant de l'environnement,
 			// on affect un poids absolu aléatoire et impacté par la relation entre agents
 			// et on calcule le poids relatif
 			ag.Poids_abs[ag2.ID()] = minWeight + rand.Float64()*(maxWeight-minWeight)*ag.Relation[ag2.ID()]
 			sum += ag.Poids_abs[ag2.Id]
 		}
-		//on applique la propriété de normalisation des poids absolus
+		// On applique la propriété de normalisation des poids absolus
 		for _, ag2 := range env.Ags {
 			pairAg := ut.Pair{}
 			if sum > 0 {
@@ -472,6 +473,7 @@ func (env *Environnement) SetPoids() {
 	}
 }
 
+// Fonction qui définie les relations entre agents
 func (env *Environnement) SetRelations() {
 	for _, ag := range env.Ags {
 		for _, ag2 := range env.Ags {
@@ -480,7 +482,7 @@ func (env *Environnement) SetRelations() {
 				switch {
 				case close < 0.25: //ennemi
 					ag.Relation[ag2.ID()] = 0.75
-				case close < 0.5: //pas de liens direct
+				case close < 0.5: //pas de lien direct
 					ag.Relation[ag2.ID()] = 1
 				case close < 0.75: //amis
 					ag.Relation[ag2.ID()] = 1.25

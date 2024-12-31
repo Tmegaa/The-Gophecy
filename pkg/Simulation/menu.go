@@ -1,5 +1,3 @@
-// pkg/Simulation/menu.go
-
 package simulation
 
 import (
@@ -9,24 +7,28 @@ import (
 	"time"
 )
 
+// Type qui gère la configuration de la simulation
 type SimulationConfig struct {
-	NumAgents           int
-	SimulationTime      time.Duration
-	BelieverMovement    ag.MovementStrategy
-	ScepticMovement     ag.MovementStrategy
-	NeutralMovement     ag.MovementStrategy
+	NumAgents        int                 // Nombre d'agents
+	SimulationTime   time.Duration       // Durée de la simulation (en minutes)
+	BelieverMovement ag.MovementStrategy // Stratégie de mouvement des croyants
+	ScepticMovement  ag.MovementStrategy // Stratégie de mouvement des sceptiques
+	NeutralMovement  ag.MovementStrategy // Stratégie de mouvement des agents neutres
 }
 
+// Fonction qui gère l'initialisation de la simulation avec les valeurs données par l'utilisateur
 func ShowMenu() SimulationConfig {
 	config := SimulationConfig{}
 
 	fmt.Println("\nBienvenue dans la Simulation Gophecy!")
 	fmt.Println("----------------------------------------")
 
+	// Utilisateur donne le nombre d'agents et la durée de la simulation
 	config.NumAgents = getIntInput("Nombre d'agents")
 	durationMinutes := getIntInput("Durée de la simulation (en minutes)")
 	config.SimulationTime = time.Duration(durationMinutes) * time.Minute
 
+	// Utilisateur choisit les stratégies de mouvement
 	fmt.Println("\nChoisissez la stratégie de mouvement pour chaque type d'agent:")
 	fmt.Println("0 - Random")
 	fmt.Println("1 - Patrol")
@@ -49,6 +51,7 @@ func ShowMenu() SimulationConfig {
 	return config
 }
 
+// Fonction qui affiche un message et récupère un entier rentré par l'utilisateur
 func getIntInput(prompt string) int {
 	var input string
 	var value int
@@ -65,6 +68,7 @@ func getIntInput(prompt string) int {
 	}
 }
 
+// Fonction qui affiche le type d'un agent et récupère un entier rentré par l'utilisateur
 func getStrategyInput(agentType string) int {
 	var input string
 	var value int
