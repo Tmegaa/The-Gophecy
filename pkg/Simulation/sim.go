@@ -406,18 +406,18 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	vector.DrawFilledRect(screen, float32(panelX), float32(panelY), float32(panelWidth), float32(panelHeight), color.RGBA{0, 0, 0, 180}, false)
 
 	// Titre du panneau
-	ebitenutil.DebugPrintAt(screen, "Simulation Info", panelX+padding, panelY+padding)
+	ebitenutil.DebugPrintAt(screen, "Informations de la simulation", panelX+padding, panelY+padding)
 
 	y := panelY + 30
 
 	// Informations de la simulation
 	elapsed := time.Since(sim.start)
-	simInfo := fmt.Sprintf("Elapsed: %s", elapsed.Round(time.Second))
+	simInfo := fmt.Sprintf("Temps écoulé: %s", elapsed.Round(time.Second))
 	ebitenutil.DebugPrintAt(screen, simInfo, panelX+padding, y)
 	y += 40
 
 	// Nombre d'agents par type
-	ebitenutil.DebugPrintAt(screen, "Agent Count:", panelX+padding, y)
+	ebitenutil.DebugPrintAt(screen, "Nombre d'agents:", panelX+padding, y)
 	y += 20
 	agentTypes := []ag.TypeAgent{ag.Sceptic, ag.Believer, ag.Neutral}
 	for _, agentType := range agentTypes {
@@ -428,9 +428,9 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 	y += 20
 
 	// Comptage des ordinateurs par programme None ou Go
-	ebitenutil.DebugPrintAt(screen, "Computer Count:", panelX+padding, y)
+	ebitenutil.DebugPrintAt(screen, "Nombre d'ordinateurs:", panelX+padding, y)
 	y += 20
-	computerTypes := []string{"None", "Go"}
+	computerTypes := []ag.Programm{ag.NoPgm, ag.GoPgm}
 	pcs := sim.env.Objs
 	for _, computerType := range computerTypes {
 		count := 0
@@ -438,7 +438,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			if pc.GetType() != ag.ComputerType {
 				continue
 			}
-			if string(pc.GetProgramm()) == computerType {
+			if pc.GetProgramm() == computerType {
 				count++
 			}
 		}
@@ -449,9 +449,9 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 
 	// Informations de l'agent sélectionné
 	if sim.selected != nil {
-		ebitenutil.DebugPrintAt(screen, "Selected Agent:", panelX+padding, y)
+		ebitenutil.DebugPrintAt(screen, "Agent sélectionné:", panelX+padding, y)
 		y += 20
-		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  SubType: %s\n  Personal Param: %.2f\n  Opinion: %.2f\n  Alive: %t\n  DialogTimer : %d\n  CurrentAction : %s\n  Time to change direction : %d \n  Occupied : %t\n  Last Prayer : %d",
+		agentInfo := fmt.Sprintf("  ID: %s\n  Type: %s\n  Sous-Type: %s\n  Paramètre Personnel: %.2f\n  Opinion: %.2f\n  Vivant: %t\n  Temps de Dialogue: %d\n  Action: %s\n  Stratégie de mouvement: %s \n  Occupé : %t\n  Dernière prière : %d",
 			sim.selected.Id,
 			sim.selected.TypeAgt,
 			sim.selected.SubType,
@@ -460,7 +460,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			sim.selected.Vivant,
 			sim.selected.DialogTimer,
 			sim.selected.CurrentAction,
-			0,
+			sim.selected.MovementStrategy,
 			sim.selected.Occupied,
 			sim.selected.TimeLastStatue,
 		)
@@ -469,7 +469,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 
 		// Informations sur la discussion actuelle
 		if sim.selected.DiscussingWith != nil {
-			discussInfo := fmt.Sprintf("  Discussing with:\n  ID: %s\n  Type: %s",
+			discussInfo := fmt.Sprintf("  En discussion avec:\n  ID: %s\n  Type: %s",
 				sim.selected.DiscussingWith.Id,
 				sim.selected.DiscussingWith.TypeAgt,
 			)
@@ -478,7 +478,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		}
 
 		// Historique des conversations
-		ebitenutil.DebugPrintAt(screen, "  Last conversations with:", panelX+padding, y)
+		ebitenutil.DebugPrintAt(screen, "  Dernières conversations avec:", panelX+padding, y)
 		y += 20
 		for i, lastTalked := range sim.selected.LastTalkedTo {
 			talkInfo := fmt.Sprintf("    %d. %s (%s)", i+1, lastTalked.Id, lastTalked.TypeAgt)
@@ -516,9 +516,9 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 
 	// Informations de l'ordinateur sélectionné
 	if sim.selectedPC != nil {
-		ebitenutil.DebugPrintAt(screen, "Selected Computer:", panelX+padding, y)
+		ebitenutil.DebugPrintAt(screen, "Ordinateur sélectionné:", panelX+padding, y)
 		y += 20
-		pcInfo := fmt.Sprintf("  ID: %s\n  Used: %t\n  Program : %s",
+		pcInfo := fmt.Sprintf("  ID: %s\n  En utilisation: %t\n  Langage de programmation: %s",
 			sim.selectedPC.Id,
 			sim.selectedPC.Used,
 			sim.selectedPC.Programm,
@@ -762,7 +762,7 @@ func (sim *Simulation) Run() error {
 
 	// Affichages de finalisation
 	fmt.Println("\n--- Simulation Terminée ---")
-	fmt.Printf("Durée totale : %s\n", time.Since(sim.start).Round(time.Second))
+	fmt.Printf("Durée totale: %s\n", time.Since(sim.start).Round(time.Second))
 
 	// Comptage des agents par type
 	agentCounts := make(map[ag.TypeAgent]int)
@@ -780,7 +780,7 @@ func (sim *Simulation) Run() error {
 		totalOpinion += agent.Opinion
 	}
 	averageOpinion := totalOpinion / float64(len(sim.agents))
-	fmt.Printf("\nOpinion moyenne des agents : %.2f\n", averageOpinion)
+	fmt.Printf("\nOpinion moyenne des agents: %.2f\n", averageOpinion)
 
 	// Générer et enregistrer le graphique
 	xValues := make([]float64, len(sim.opinionAverages))

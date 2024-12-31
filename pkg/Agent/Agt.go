@@ -36,9 +36,9 @@ const (
 type TypeAgent string
 
 const (
-	Sceptic  TypeAgent = "Sceptic"
-	Believer TypeAgent = "Believer"
-	Neutral  TypeAgent = "Neutral"
+	Sceptic  TypeAgent = "Sceptique"
+	Believer TypeAgent = "Croyant"
+	Neutral  TypeAgent = "Neutre"
 )
 
 // Chaque agent va avoir un ID
@@ -48,13 +48,13 @@ type IdAgent string
 type ActionType string
 
 const (
-	MoveAct     ActionType = "Moving"
-	ComputerAct ActionType = "Using Computer"
-	RunAct      ActionType = "Running"
-	DiscussAct  ActionType = "Discussing"
-	WaitAct     ActionType = "Waiting"
-	PrayAct     ActionType = "Praying"
-	EatAct      ActionType = "Eating"
+	MoveAct     ActionType = "Bouge"
+	ComputerAct ActionType = "Utilise un ordinateur"
+	RunAct      ActionType = "Cours"
+	DiscussAct  ActionType = "Discute"
+	WaitAct     ActionType = "Attend"
+	PrayAct     ActionType = "Prie"
+	EatAct      ActionType = "Mange"
 )
 
 type Agent struct {
@@ -511,25 +511,25 @@ func (ag *Agent) ClearAction() {
 
 		switch ag.TypeAgt {
 		case Believer:
-			if currentProgram == "None" {
-				ag.UseComputer.SetProgramm("Go")
+			if currentProgram == NoPgm {
+				ag.UseComputer.SetProgramm(GoPgm)
 				ag.Opinion = math.Min(1.0, ag.Opinion+0.005)
-			} else if currentProgram == "Go" {
+			} else if currentProgram == GoPgm {
 				ag.Opinion = math.Min(1.0, ag.Opinion+0.05)
 			}
 
 		case Sceptic:
-			if currentProgram == "Go" {
-				ag.UseComputer.SetProgramm("None")
+			if currentProgram == GoPgm {
+				ag.UseComputer.SetProgramm(NoPgm)
 				ag.Opinion = math.Max(0.0, ag.Opinion-0.005)
-			} else if currentProgram == "None" {
+			} else if currentProgram == NoPgm {
 				ag.Opinion = math.Max(0.0, ag.Opinion-0.05)
 			}
 
 		case Neutral:
-			if currentProgram == "Go" {
+			if currentProgram == GoPgm {
 				ag.Opinion = math.Min(1.0, ag.Opinion+0.05)
-			} else if currentProgram == "None" {
+			} else if currentProgram == NoPgm {
 				ag.Opinion = math.Max(0.0, ag.Opinion-0.05)
 			}
 		}

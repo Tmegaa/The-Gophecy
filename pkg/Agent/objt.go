@@ -21,8 +21,8 @@ type InterfaceObjet interface {
 type Programm string
 
 const (
-	Go Programm = "Go"
-	No Programm = "None"
+	GoPgm Programm = "Go"
+	NoPgm Programm = "None"
 )
 
 type TypeObjet string
@@ -78,7 +78,7 @@ func NewComputer(env *Environnement, id IdObjet, pos pos.Position) *Computer {
 			Env:      env,
 			Id:       id,
 			Position: pos,
-			Programm: No,
+			Programm: NoPgm,
 			Used:     false,
 			Type:     ComputerType,
 		},
@@ -124,7 +124,7 @@ func NewStatue(env *Environnement, id IdObjet, pos pos.Position) *Statue {
 			Env:      env,
 			Id:       id,
 			Position: pos,
-			Programm: No,
+			Programm: NoPgm,
 			Used:     false,
 			Type:     StatueType,
 		},
