@@ -334,17 +334,17 @@ func (ag *Agent) Prayer(statue *Statue) ActionType {
 	return PrayAct
 }
 
-// Fonction d'action où l'agent tente d'utiliser un ordinateur
-func (ag *Agent) useComputer(computer *Computer) ActionType {
-	if !computer.TryUse() {
-		return WaitAct
-	}
+// // Fonction d'action où l'agent tente d'utiliser un ordinateur
+// func (ag *Agent) useComputer(computer *Computer) ActionType {
+// 	if !computer.TryUse() {
+// 		return WaitAct
+// 	}
 
-	ag.Occupied = true
-	ag.UseComputer = computer
-	ag.LastComputer = computer
-	return ComputerAct
-}
+// 	ag.Occupied = true
+// 	ag.UseComputer = computer
+// 	ag.LastComputer = computer
+// 	return ComputerAct
+// }
 
 // Fonction auxiliaire pour vérifier si deux agents peuvent interagir
 func (ag *Agent) shouldInteract(other *Agent) bool {
@@ -477,7 +477,7 @@ func (ag *Agent) Act(env *Environnement, choice ActionType) {
 // Fonction qui met à jour l'action d'un agent
 func (ag *Agent) SetAction(action ActionType) {
 	ag.CurrentAction = action
-	ag.DialogTimer = 180 // 2 secondes à 60 FPS
+	ag.DialogTimer = 180 // 3 secondes à 60 FPS
 }
 
 // Fonction qui réinitialise l'action d'un agent

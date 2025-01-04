@@ -13,7 +13,6 @@ import (
 	"math/rand"
 	"os"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/golang/freetype/truetype"
@@ -53,9 +52,7 @@ type Simulation struct {
 	objets             []ag.InterfaceObjet
 	maxStep            int
 	maxDuration        time.Duration
-	step               int
 	start              time.Time
-	syncChans          sync.Map
 	carte              carte.Carte
 	selected           *ag.Agent
 	selectedPC         *ag.Computer
@@ -71,7 +68,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
 	env := createEnvironment(*carte)
-	obj := loadObjects(&env, carte)
+	obj := loadObjects(&env)
 	agents := createAgents(&env, carte, config)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
@@ -125,7 +122,7 @@ func loadMap() *carte.Carte {
 }
 
 // Fonction qui charge les objets dans la carte
-func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet {
+func loadObjects(env *ag.Environnement) []ag.InterfaceObjet {
 	obj := make([]ag.InterfaceObjet, NumComputers+NumStatues)
 
 	for i := 0; i < NumComputers; i++ {
@@ -149,7 +146,7 @@ func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet 
 }
 
 // Fonction qui renvoie une liste des positions possibles que peuvent prendre les objets ou les agents
-func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
+func getValidSpawnPositions(carte *carte.Carte) []ut.Position {
 	validPositions := []ut.Position{}
 	for layerIdx, layer := range carte.TilemapJSON.Layers {
 		for i, tileID := range layer.Data {
@@ -170,7 +167,7 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 // Fonction qui crée et rajoute à la carte les nouveaux agents
 func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []ag.Agent {
 	agents := make([]ag.Agent, config.NumAgents)
-	validPositions := getValidSpawnPositions(carte, 1)
+	validPositions := getValidSpawnPositions(carte)
 	visitationMap := ag.NewVisitationMap(validPositions)
 
 	if len(validPositions) < config.NumAgents {
