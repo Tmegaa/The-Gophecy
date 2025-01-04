@@ -203,6 +203,23 @@ De plus, un graphique détaillant l'opinion globale sur Go en fonction du temps 
 
 ### 4.💡 Idées pour la suite
 
+Tout au long de ce rapport nous avons vu des améliorations possibles pour ce projet. Nous pouvons en explorer d'avantage.
+
+En effet, nos agents ont un booléen qui indique s'ils sont vivants ou pas. Avec cette version de la simulation, il n'est pas possible de mourir, cependant il serait envisageable de rajouter des fonctionnalités en rapport à la santé des agents: un agent fatigué ou affamé pourrait être beaucoup plus influençable qu'un agent en pleine santé! Des paramètres de faim ou d'énergie avec des actions de type "Manger" ou "Dormir" (des fonctions ont été laissées en commentaire pour montrer l'emplacement des fonctions dans notre architecture) seraient donc rajoutées à nos agents. La conclusion si un agent est beaucoup trop affamé ou beaucoup trop fatigué? Notre booléen prendrait la valeur `false`.
+
+De plus, nous explorons ici l'opinion vis à vis de Go, mais l'évolution que nous avions prévu de base pour cette simulation serait l'introduction d'autres sectes! Que ce soit le C++ulte, le Hask Hell
+la BASH astrée ou l'HTMLM, il serait très intéressant d'observer la concurrence des différentes croyances au sein d'une même population.
+
+Nous avions pensé à une liste (ou un map, peu importe), au lieu d'une seule valeur modélisant l'opinion d'une personne. Il y aurait à priori plus de types de croyants et des questions à se poser:
+
+- Est-ce qu'on peut être croyant pour une seule secte ou pour plusieurs?
+- Dans le cas où un agent devient croyant, que deviennent ses autres opinions?
+- Quel est la nouvelle signification du scepticisme?
+
+De plus, étant donné que cette simulation a lieu au sein d'un campus universitaire, nous pourrions rajouter des personnages tels que des professeurs qui instruisent un groupe d'agents.
+
+Finalement, pour l'instant l'utilisateur ne peut pas intervenir dans la simulation. Il donne les paramètres de départ, mais il ne peut pas agir après en dehors de la visualisation d'informations. Nous pourrions envisager d'ajouter des boutons qui permettraient à l'utilisateur de rajouter des agents ou des objets en cours de route.
+
 ## 😇  Les Gophètes
 
 - 🌱Lepretre Thomas
