@@ -54,7 +54,7 @@ const (
 	DiscussAct  ActionType = "Discute"
 	WaitAct     ActionType = "Attend"
 	PrayAct     ActionType = "Prie"
-	EatAct      ActionType = "Mange"
+	// EatAct      ActionType = "Mange"
 )
 
 type Agent struct {
@@ -207,7 +207,7 @@ func (ag *Agent) Percept(env *Environnement) ([]*Agent, []*InterfaceObjet) {
 	defer env.RUnlock()
 
 	// Message à envoyer à l'environnement
-	msg := Message{Type: "Perception", Agent: ag}
+	msg := Message{Type: PerceptionMsg, Agent: ag}
 	ag.SendToEnv(msg)
 
 	// Réception des agents à proximité dans le channel de l'agent
@@ -335,16 +335,16 @@ func (ag *Agent) Prayer(statue *Statue) ActionType {
 }
 
 // Fonction d'action où l'agent tente d'utiliser un ordinateur
-func (ag *Agent) useComputer(computer *Computer) ActionType {
-	if !computer.TryUse() {
-		return WaitAct
-	}
+// func (ag *Agent) useComputer(computer *Computer) ActionType {
+// 	if !computer.TryUse() {
+// 		return WaitAct
+// 	}
 
-	ag.Occupied = true
-	ag.UseComputer = computer
-	ag.LastComputer = computer
-	return ComputerAct
-}
+// 	ag.Occupied = true
+// 	ag.UseComputer = computer
+// 	ag.LastComputer = computer
+// 	return ComputerAct
+// }
 
 // Fonction auxiliaire pour vérifier si deux agents peuvent interagir
 func (ag *Agent) shouldInteract(other *Agent) bool {
@@ -551,9 +551,9 @@ func (ag *Agent) ClearAction() {
 }
 
 // Fonction d'action où l'agent mange: pas utilisée pour l'instant
-func (ag *Agent) Eat() {
-	ag.SetAction(EatAct)
-}
+// func (ag *Agent) Eat() {
+// 	ag.SetAction(EatAct)
+// }
 
 // Fonction qui envoie un message à l'environnement via le channel de communication l'environnement
 func (ag *Agent) SendToEnv(msg Message) {

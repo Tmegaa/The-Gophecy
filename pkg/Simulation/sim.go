@@ -13,7 +13,6 @@ import (
 	"math/rand"
 	"os"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/golang/freetype/truetype"
@@ -48,14 +47,14 @@ const (
 )
 
 type Simulation struct {
-	env                ag.Environnement
-	agents             []ag.Agent
-	objets             []ag.InterfaceObjet
-	maxStep            int
-	maxDuration        time.Duration
-	step               int
-	start              time.Time
-	syncChans          sync.Map
+	env    ag.Environnement
+	agents []ag.Agent
+	objets []ag.InterfaceObjet
+	// maxStep            int
+	maxDuration time.Duration
+	// step               int
+	start time.Time
+	// syncChans          sync.Map
 	carte              carte.Carte
 	selected           *ag.Agent
 	selectedPC         *ag.Computer
@@ -83,10 +82,10 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	selectionIndicator.Fill(color.RGBA{255, 255, 0, 128})
 
 	return &Simulation{
-		env:         env,
-		agents:      agents,
-		objets:      obj,
-		maxStep:     10,
+		env:    env,
+		agents: agents,
+		objets: obj,
+		// maxStep:     10,
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
 		carte:       *carte,
