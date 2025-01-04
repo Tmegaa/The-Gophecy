@@ -39,7 +39,7 @@ Une modélisation des éléments de cette simulation:
 
 ### 2.🚶 Les agents
 
-Les agents sont des étudiants en ingénierie informatique et ont donc des fortes opinions vis-à-vis des langages de programmation. Dans cette simulation, on peut considérer que ces croyances sont un peu sectaires. De plus, cette simulation a lieu dans un campus d'université, les agents peuvent donc se déplacer librement, mais ils auront des preferences par rapport à leur façon de bouger.
+Les agents sont des étudiants en ingénierie informatique et ont donc des fortes opinions vis-à-vis des langages de programmation. Dans cette simulation, on peut considérer que ces croyances sont un peu sectaires... De plus, cette simulation a lieu dans un campus d'université, les agents peuvent donc se déplacer librement, mais ils auront des preferences par rapport à leur façon de bouger.
 
 Dans la boucle de perception, délibération et action de chaque agent, il y a un temps d'attente de 20ms entre chaque boucle.
 
@@ -62,6 +62,8 @@ Opinion|Type|Description|
 [0, 0.33[| Sceptique| Ne croit pas dans le langage Go et va essayer des dissuader ses camarades de l'utiliser.|
 [0.33, 0.66]| Neutre| Est mitigé et va être influencé par tous les autres agents.|
 ]0.66, 1]| Croyant| Croit que le langage Go est incroyable et aura pour mission de répandre sa croyance en plus d'essayer de l'augmenter.|
+
+Après une modification de l'opinion d'un agent, on vérifie son type et on le met à jour si besoin: les types ne sont donc pas statiques tout au long de la simulation, ils peuvent évoluer.
 
 Le type de chaque agent va influencer son comportement, particulièrement dans 4 domaines:
 
@@ -87,6 +89,51 @@ Les croyants vont avoir une plus grande tendance à être des convertisseurs alo
 La probabilité d'avoir un sous-type est de 70%.
 
 ### 3. 📈 L'évolution des croyances
+
+Il y a trois actions qui font évoluer les croyances des agents: prier, discuter et utiliser un ordinateur.
+
+Lors de l'utilisation d'un ordinateur, les sceptiques diminuent leur opinion de Go (et le désinstallent si installé), contrairement aux croyants qui l'augmentent (en installant Go). Les agents neutres vont voir leur opinion diminuer ou augmenter en fonction de si Go est installé ou pas.
+
+La prière n'est disponible que pour les agents croyants et neutres: elle fait augmenter la croyance en Go, d'autant plus pour les agents neutres (qui décident d'agir en fonction de leur foi). Les agents neutres vont cependant avoir moins de probabilités de choisir la prière.
+
+Enfin, la façon la plus intéressante de faire évoluer les croyances des agents est la discussion: dans le cas où un agent croyant et un sceptique décident de parler, ils ne font qu'amplifier leur opinion de base. En effet, le croyant voit son opinion augmenter et le sceptique voit la sienne diminuer. C'est une modélisation de deux personnes têtues qui ne vont pas pouvoir écouter des arguments qu'ils jugent presque "extrémistes" de l'autre.
+
+D'un autre côté, les discussions entre un agent neutre et tout autre type d'agent vont voir intervenir bien plus de paramètres: nous voyons entrer en jeu les relations entre les agents, un certain degré de charisme qui donne un certain poids aux conversations...
+
+> Nous avons basé la modélisation sur plusieurs articles, que l'on peut trouver dans le dossier "/pdf" de ce projet. De plus, le document [Résumé et Analyse : Modèle d’Endoctrinement par équations Différentielles](./pdf/Indoctrination_equation%20(1).pdf) détaille toutes les équations.
+
+Tout d'abord, on modélise les relations entre les agents. Un agent peut avoir une des relations suivantes avec un autre agent:
+
+- Ennemi
+- Amis
+- Famille
+- Pas de lien direct / Inconnu
+  
+Cette relation va avoir un effet sur le calcul des poids absolus. Pour chaque agent, nous allons attribuer le poids qu'il donne à l'opinion d'un autre agent. Il va être beaucoup plus confiant d'un ami que d'un inconnu par exemple. Ces poids absolus sont normalisés. Un agent va avoir une certaine confiance envers lui-même, un poids absolu qu'il donne à ses propres opinions, qui se traduit par la valeur référencée par son propre ID dans son dictionnaire de poids absolus.
+
+Pour les poids relatifs, ce paramètre de confiance en soi rentre en jeu. En effet, un agent A va avoir une certaine confiance générale sur sa propre opinion (poids absolu), une certaine confiance de sa propre opinion en parlant avec un agent B (poids relatif 1) et une certaine confiance dans l'opinion de l'agent B tout en prenant en compte non seulement leur relation mais aussi sa propre confiance (poids relatif 2).
+
+$$
+\displaystyle Rel_{A\to A /B}=\frac{Abs_{A\to A}}{Abs_{A\to A}+Abs_{A\to B}} \quad Rel_{A\to B/B}=\frac{Abs_{A\to B}}{Abs_{A\to A}+Abs_{A\to B}}
+$$
+
+Chaque agent a en plus un paramètre personnel qui symbolise sa réceptivité.
+
+Lors d'une conversation, nous avons modélisé la mise à jour des opinions des agents A et B de la façon suivante (cf. [source](./pdf/Indoctrination_equation%20(1).pdf) pour plus de détails):
+
+$$
+\displaystyle NewO_{A} = Rel_{A\to A /B} * K_{A} * OldO_{A} * (1-OldO_{A}) + Rel_{A\to B /B} * OldO_{B}
+$$
+$$
+\displaystyle NewO_{B} = Rel_{B\to A /A} * OldO_{A} + Rel_{B\to B /A} * OldO_{B} * K_{B} * OldO_{B} * (1-OldO_{B})
+$$
+
+- K est le paramètre personnel
+- NewO est la nouvelle opinion
+- OldO est l'opinion courante
+- Rel est le poids relatif que donne le premier agent à l'opinion du deuxième en connaissant l'interlocuteur.
+
+Nous avions prévu de rajouter un paramètre de Charisme qui serait l'influence perçue d'un agent A sur un agent B, mais ceci n'as pas été implémenté.
 
 ### 4. 🏃 Les stratégies de mouvement
 

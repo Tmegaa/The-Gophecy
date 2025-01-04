@@ -327,12 +327,12 @@ func (ag *Agent) tryUseObjects(obj []*InterfaceObjet) ActionType {
 }
 
 // Fonction d'action où l'agent prie pour augmenter sa croyance
-func (ag *Agent) Prayer(statue *Statue) ActionType {
-	ag.LastStatue = statue
-	ag.Occupied = true
-	ag.TimeLastStatue = time.Now()
-	return PrayAct
-}
+// func (ag *Agent) Prayer(statue *Statue) ActionType {
+// 	ag.LastStatue = statue
+// 	ag.Occupied = true
+// 	ag.TimeLastStatue = time.Now()
+// 	return PrayAct
+// }
 
 // Fonction d'action où l'agent tente d'utiliser un ordinateur
 // func (ag *Agent) useComputer(computer *Computer) ActionType {
