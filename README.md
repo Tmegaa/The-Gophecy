@@ -8,9 +8,18 @@ Les agents, des étudiants d'ingénierie informatique au sein d'un campus, sont 
 
 ## 🔗 Recupérer le projet du repository (git)
 
+Pour simplement récupérer le module et pouvoir faire tourner la simulation:
+
 ```{bash}
 go env -w GOPRIVATE=github.com/Tmegaa/*
 go install github.com/Tmegaa/The-Gophecy@latest
+go run .
+```
+
+Dans le cas où vous voudriez récupérer tout le projet (notamment les sources dans le dossier "/pdf"):
+
+```{bash}
+git clone https://github.com/Tmegaa/The-Gophecy.git
 ```
 
 ## 🔬  Tests avec différents cas de figure
@@ -88,7 +97,7 @@ Les croyants vont avoir une plus grande tendance à être des convertisseurs alo
 
 La probabilité d'avoir un sous-type est de 70%.
 
-### 3. 📈 L'évolution des croyances
+#### 2.3. 📈 L'évolution des croyances
 
 Il y a trois actions qui font évoluer les croyances des agents: prier, discuter et utiliser un ordinateur.
 
@@ -135,11 +144,24 @@ $$
 
 Nous avions prévu de rajouter un paramètre de Charisme qui serait l'influence perçue d'un agent A sur un agent B, mais ceci n'as pas été implémenté.
 
-### 4. 🏃 Les stratégies de mouvement
+#### 2.4 🏃 Les stratégies de mouvement
+
+Chaque type d'agent va avoir une stratégie de mouvement différente. cette stratégie pourra être assignée lors du début de la simulation par l'utilisateur, et c'est envisageable de la prédéfinir avec des fichiers de configuration.
+
+Les 4 stratégies de mouvement sont:
+
+- **Random** : cette stratégie est la plus simple car une direction est choisie aléatoirement.
+- **Patrol** : l'agent va choisir un point vers lequel se diriger dans la carte. Il va choisir plusieurs point aléatoirement au début, puis il choisira le meilleur en lui assignant un score qui va dépendre de la distance à parcourir pour arriver à ce point, les potentiels obstacles à éviter et un facteur aléatoire. Ce point peut rester constant tout le long de la simulation s'il n'est pas atteint, mais l'agent a aussi la possibilité de changer de point s'il atteint la position ou de prendre une direction aléatoire.
+- **HeatMap** : les agents maintiennent un historique des positions qu'ils ont déjà visité. Avec cette stratégie, les agents vont essayer de se diriger vers les zones qu'ils ont personnellement visité le moins afin de parcourir des nouvelles positions le plus possible.
+- **Center of Mass** : les agents vont chercher à se déplacer vers le centre de congrégations. Soit, en calculant le centre de masse des agents aux alentours, ces agents vont avoir comme objectif dans leur déplacement un point qui les rapprochera le plus possible au plus grand nombre d'agents possible. Il y a tout de même une petite chance de passer à un mouvement aléatoire pour éviter un regroupement excessif.
+
+Pour l'instant la vitesse des agents indiquée lors de la création n'a pas d'effet dans leur déplacement, pour notre simulation il n'est pas vital que les agents bougent à des vitesses différentes. Une modification à envisager par la suite serait l'implémentation des vitesses.
+
+### 3. ▶️ La simulation
 
 ## 😇  Les Gophètes
 
 - Lepretre Thomas
 - Perdereau Tom
-- Saby Loyola Sophie
+- 🌟 Saby Loyola Sophie
 - Sporck Trombini Gabriel
