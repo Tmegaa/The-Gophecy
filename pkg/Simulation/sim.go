@@ -70,7 +70,7 @@ type Simulation struct {
 func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
-	env := createEnvironment(*carte, config.NumAgents)
+	env := createEnvironment(*carte)
 	obj := loadObjects(&env, carte)
 	agents := createAgents(&env, carte, config)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
@@ -108,7 +108,7 @@ func initializeWindow() {
 }
 
 // Fonction qui crée et retourne un nouvel environnement
-func createEnvironment(carte carte.Carte, NumAgents int) ag.Environnement {
+func createEnvironment(carte carte.Carte) ag.Environnement {
 	return *ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
@@ -185,17 +185,27 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 	agentsImg := loadImage(AssetsPath + AgentBelieverImageFile)
 
 	for i := 0; i < config.NumAgents; i++ {
-		// Génère des valeurs aléatoires
-		Opinion := rand.Float64()
+		// Génère des valeurs aléatoires en rescpectant les contraintes de type s'il y en a
+		
+		var Opinion float64
+		if i < config.NumBelievers {
+			Opinion = rand.Float64()*(1./3.) + 2./3.
+		} else if i < config.NumBelievers + config.NumSceptics {
+			Opinion = rand.Float64()*(1./3.)
+		} else if i < config.NumBelievers + config.NumSceptics + config.NumNeutrals {
+			Opinion = rand.Float64()*(1./3.) + 1./3.
+		} else {
+			Opinion = rand.Float64()
+		}
 
 		// Détermine le type de base de l'agent
 		var TypeChoosen ag.TypeAgent
-		if Opinion < 0.33 {
-			TypeChoosen = ag.Sceptic
-		} else if Opinion < 0.66 {
+		if Opinion > 2./3. {
+			TypeChoosen = ag.Believer
+		} else if Opinion > 1./3. {
 			TypeChoosen = ag.Neutral
 		} else {
-			TypeChoosen = ag.Believer
+			TypeChoosen = ag.Sceptic
 		}
 		id := ag.IdAgent(fmt.Sprintf("Agent%d", i))
 		velocite := rand.Float64()

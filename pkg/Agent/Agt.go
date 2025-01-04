@@ -575,15 +575,15 @@ func (ag *Agent) CheckType() {
 	oldType := ag.TypeAgt
 
 	// Mise à jour du type de l'agent par rapport à son opinion
-	if ag.Opinion > 0.66 {
+	if ag.Opinion > 2./3. {
 		ag.TypeAgt = Believer
 		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentBelieverImageFile)
-	} else if ag.Opinion < 0.33 {
-		ag.TypeAgt = Sceptic
-		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentScepticImageFile)
-	} else {
+	} else if ag.Opinion > 1./3. {
 		ag.TypeAgt = Neutral
 		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentNeutralImageFile)
+	} else {
+		ag.TypeAgt = Sceptic
+		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentScepticImageFile)
 	}
 
 	// Si le type a changé, on recalcule le sous-type
