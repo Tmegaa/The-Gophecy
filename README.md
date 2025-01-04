@@ -159,9 +159,53 @@ Pour l'instant la vitesse des agents indiquée lors de la création n'a pas d'ef
 
 ### 3. ▶️ La simulation
 
+Le backend est (évidemment) réalisé en Go, mais pour l'affichage nous avons utilisé Ebiten.
+
+Lorsqu'on lance la simulation, on donne le nombre d'agents, la durée de la simulation et les stratégies de mouvement par type. La simulation est donc initialisée et l'affichage graphique est ouvert dans une autre fenêtre.
+
+Tout d'abord nous pouvons observer l'affichage (cette simulation comptait 40 agents):
+
+![simu1](/images/simu_all.png "Capture d'écran de la simulation")
+
+A gauche nous pouvons voir les informations pertinentes de la simulation, tel de que temps écoulé, la répartition des agents par type et le langage de programmation installé sur les ordinateurs. A droite nous observons la carte avec les agents, les objets...
+
+![simu2](/images/three_agents.png "Capture d'écran de trois agents")
+
+Chaque type d'agent est affiché avec une image différente: les croyants sont en noir, les sceptiques sont en rouge et les agents neutres sont en blanc. Le carré qui les entoure est leur zone de perception.
+
+![simu3](/images/simu_click_agent.png "Capture d'écran affichage infos agent")
+
+Lorsqu'on clique sur un agent (ici nous pouvons le voir tout à droite, un sceptique rouge entouré d'un carré jaune), nous pouvons lire sur le bandeau de gauche des informations pertinentes sur cet agent telles que son action courante, son historique de discussions, son paramètre personnel de réceptivité...
+
+Pour l'instant, il n'est pas encore possible de faire un scroll dans ce bandeau, il n'est donc pas possible de voir toutes les relations que cet agent a avec le reste.
+
+Lorsque l'agent sélectionné est en discussion avec un autre, nous avons les cette information aussi.
+
+![simu4](/images/discussion_infos.png "Capture d'écran affichage informations sur discussion")
+
+Un click sur un ordinateur nous donne des informations aussi:
+
+![simu5](/images/click_computer.png "Capture d'écran affichage infos ordinateur")
+
+Chaque action, autre que le mouvement, affiche une petite boîte en dessus de l'agent avec le nom de l'action et une barre qui indique le temps restant pour compléter cette action. Si cette action est une discussion, on affiche aussi le type de chaque agent.
+
+![simu6](/images/discussion.png "Capture d'écran affichage action")
+
+Lorsque la simulation finit, nous avons un petit compte-rendu avec la répartition des agents par type finale et l'opinion moyenne de tous les agents par rapport à Go.
+
+Par exemple, ici on a les résultats d'une simulation de 50 agents dont les stratégies de mouvement étaient toutes aléatoires:
+
+![simu7](/images/simu_end.png "Capture d'écran affichage à la fin d'une simulation")
+
+De plus, un graphique détaillant l'opinion globale sur Go en fonction du temps écoulé est sauvegardé. Pour la même simulation nous obtenons:
+
+![simu8](/images/results_example.png "Graphique représentant la croyance moyenne de la population en fonction du temps")
+
+### 4.💡 Idées pour la suite
+
 ## 😇  Les Gophètes
 
-- Lepretre Thomas
-- Perdereau Tom
+- 🌱Lepretre Thomas
+- 🐤 Perdereau Tom
 - 🌟 Saby Loyola Sophie
-- Sporck Trombini Gabriel
+- 👽 Sporck Trombini Gabriel
