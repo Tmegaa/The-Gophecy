@@ -240,7 +240,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 		return MoveAct
 	}
 
-	// Define prioridade baseada no subtipo
+	// Définit la priorité en fonction du sous-type
 	switch ag.SubType {
 	case Pirate:
 		// Les pirates donnent la priorité aux ordinateurs

@@ -1,41 +1,43 @@
 # Projet IA04 - A24 : La Gophétie
 
-## Description
+## 🏫 Description
 
 Dans cette simulation multi-agents, nous explorons l'évolution de leur croyance: seront-ils fidèles au langage Go?
 
 Les agents, des étudiants d'ingénierie informatique au sein d'un campus, sont plus ou moins adhérents à la doctrine du langage Go. Les plus croyants veulent persuader leurs camarades de la supériorité de ce magnifique langage de programmation, alors que les plus sceptiques ont pour mission de dissuader les autres. Dans cette simulation nous allons nous poser une question: **Quelles politiques d'embrigadement fonctionnent le mieux ?**
 
-## Recupérer le projet du repository (git)
+## 🔗 Recupérer le projet du repository (git)
 
 ```{bash}
 go env -w GOPRIVATE=github.com/Tmegaa/*
 go install github.com/Tmegaa/The-Gophecy@latest
 ```
 
-## Tests avec différents cas de figure
+## 🔬  Tests avec différents cas de figure
 
 > TODO: fill this
 
-## La Gophétie
+## 💻 La Gophétie
 
-### 1. L'architecture
+### 1. 📐 L'architecture
 
-- backend: go
-- frontend: ebiten
+- backend: **go**
+- frontend: **ebiten**
 
 Packages:
 
-- agent: gestion des agents, de l'environnement et des objets
-- carte: gestion de la carte
-- simulation: gestion de la simulation (l'affichage graphique, les interactions avec l'utilisateur…)
-- tile: gestion des jeux de tuiles (soit les éléments sur la carte)
-- utils: constantes et fonctions qui sont utiles dans les autres packages
-- gophecy: contient le "main"
+- **agent**: gestion des agents, de l'environnement et des objets
+- **carte**: gestion de la carte
+- **simulation**: gestion de la simulation (l'affichage graphique, les interactions avec l'utilisateur…)
+- **tile**: gestion des jeux de tuiles (soit les éléments sur la carte)
+- **utils**: constantes et fonctions qui sont utiles dans les autres packages
+- **gophecy**: contient le "main"
 
-Une modélisation des éléments de cette simulation: IMAGE
+Une modélisation des éléments de cette simulation:
 
-### 2. Les agents
+![UML](/pdf/UML_Classe.png "UML des classes")
+
+### 2.🚶 Les agents
 
 Les agents sont des étudiants en ingénierie informatique et ont donc des fortes opinions vis-à-vis des langages de programmation. Dans cette simulation, on peut considérer que ces croyances sont un peu sectaires. De plus, cette simulation a lieu dans un campus d'université, les agents peuvent donc se déplacer librement, mais ils auront des preferences par rapport à leur façon de bouger.
 
@@ -76,13 +78,19 @@ Prier | (action non réalisable) | Prie auprès d'une statue | Peut prier auprè
 
 #### 2.2 Les sous-types d'agents
 
-En effet...
+Aucun sous-type n'est possible pour les agents neutres. Cependant les croyants et les sceptiques ont la possibilité d'être des pirates ou des convertisseurs. Ces sous-types rentrent en jeu dans le cas où un agent pourrait percevoir à la fois un ou plusieurs agents proches en plus d'un ou plusieurs objets à proximité.
 
-### 3. L'évolution des croyances
+Si le choix est présenté, un pirate va choisir d'interagir avec un ordinateur plutôt qu'engager une conversation avec un autre agent. Pour les convertisseurs c'est l'inverse.
 
-### 4. Les stratégies de mouvement
+Les croyants vont avoir une plus grande tendance à être des convertisseurs alors que les sceptiques auront plus tendance à être des pirates.
 
-## Les Gophètes
+La probabilité d'avoir un sous-type est de 70%.
+
+### 3. 📈 L'évolution des croyances
+
+### 4. 🏃 Les stratégies de mouvement
+
+## 😇  Les Gophètes
 
 - Lepretre Thomas
 - Perdereau Tom
