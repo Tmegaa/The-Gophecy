@@ -32,7 +32,7 @@ const (
 	WindowWidth            = 1920
 	WindowHeight           = 1080
 	NumComputers           = 6
-	NumStatues             = 1
+	NumStatues             = 3
 	AssetsPath             = "assets/images/"
 	MapsPath               = "assets/maps/"
 	AgentBelieverImageFile = "ninja.png"
@@ -65,8 +65,7 @@ type Simulation struct {
 	opinionAverages   []float64
 }
 
-// NewSimulation initializes a new simulation
-// pkg/Simulation/simulation.go
+
 
 func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
@@ -119,7 +118,7 @@ func loadMap() *carte.Carte {
 	computers := generateComputers(tilemapJSON, tilesets)
 	statues := generateStatues(tilemapJSON, tilesets)
 
-	// générer des ordinateurs.
+	
 	return carte.NewCarte(*tilemapJSON, tilesets, tilemapImg, coliders, computers, statues)
 }
 
@@ -150,7 +149,7 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 	validPositions := []ut.Position{}
 	for layerIdx, layer := range carte.TilemapJSON.Layers {
 		for i, tileID := range layer.Data {
-			if tileID == 5 || tileID == 6 || tileID == 21 || tileID == 22 { // Assumindo que 0 representa um tile vazio
+			if tileID == 5 || tileID == 6 || tileID == 21 || tileID == 22 { 
 				x := float64((i % layer.Width) * TileSize)
 				y := float64((i / layer.Width) * TileSize)
 				img := carte.Tilesets[layerIdx].Img(tileID)
@@ -177,14 +176,14 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
 	})
 
-	//default image
+	
 	agentsImg := loadImage(AssetsPath + AgentBelieverImageFile)
 
 	for i := 0; i < config.NumAgents; i++ {
-		// Gera valores aleatórios
+		
 		Opinion := rand.Float64()
 
-		// Determina o tipo base do agente
+		
 		var TypeChoosen ag.TypeAgent
 		if Opinion < 0.33 {
 			TypeChoosen = ag.Sceptic
@@ -197,15 +196,47 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		velocite := rand.Float64()
 		acuite := 50.0
 		position := validPositions[i]
-		personalParameter := 0.1 + rand.Float64()*4.0 - 0.1
-		// Cria mapa de carisma
-		charisme := make(map[ag.IdAgent]float64)
-		//charisme[id] = rand.Float64()
+		
 
-		// Cria mapa de relações
+
+		
+		personalParameter := 0.0
+		switch TypeChoosen {
+		case ag.Believer:
+			if config.BelieverStrategy == 0 {
+				personalParameter = 4
+			} else if config.BelieverStrategy == 1 {
+				personalParameter = 1
+			} else {
+				personalParameter = 0.1
+			}
+		case ag.Sceptic:
+			if config.ScepticStrategy == 0 {
+				personalParameter = 4
+			} else if config.ScepticStrategy == 1 {
+				personalParameter = 1
+			} else {
+				personalParameter = 0.1
+			}
+		case ag.Neutral:
+			if config.NeutralStrategy == 0 {
+				personalParameter = 4
+			}
+			if config.NeutralStrategy == 1 {
+				personalParameter = 1
+			}
+			if config.NeutralStrategy == 2 {
+				personalParameter = 0.1
+			}
+		}
+		
+		charisme := make(map[ag.IdAgent]float64)
+		
+
+		
 		relation := make(map[ag.IdAgent]float64)
 
-		// Define estratégia de movimento
+		
 		var strategy ag.MovementStrategy
 		switch TypeChoosen {
 		case ag.Believer:
@@ -219,7 +250,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 			agentsImg = loadImage(AssetsPath + AgentNeutralImageFile)
 		}
 
-		// Cria o agente usando NewAgent
+	
 		agent := ag.NewAgent(
 			env,
 			id,
@@ -235,13 +266,13 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 			agentsImg,
 		)
 
-		// Configura campos adicionais
+		
 		agent.HeatMap = visitationMap
 		agent.MovementStrategy = strategy
 		agents[i] = *agent
 		env.AddAgent(&agents[i])
 	}
-	env.SetRelations()
+	env.SetRelations(config.BelieverStrategy, config.ScepticStrategy, config.NeutralStrategy)
 	env.SetPoids()
 	return agents
 }
@@ -454,7 +485,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, agentInfo, panelX+padding, y)
 		y += 180
 
-		// Informações sobre discussão atual
+		
 		if sim.selected.DiscussingWith != nil {
 			discussInfo := fmt.Sprintf("  Discussing with:\n  ID: %s\n  Type: %s",
 				sim.selected.DiscussingWith.Id,
@@ -464,7 +495,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 			y += 60
 		}
 
-		// Histórico de conversas
+	
 		ebitenutil.DebugPrintAt(screen, "  Last conversations with:", panelX+padding, y)
 		y += 20
 		for i, lastTalked := range sim.selected.LastTalkedTo {
@@ -474,20 +505,20 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 		}
 		y += 20
 
-		// Relações com outros agentes
+		
 		ebitenutil.DebugPrintAt(screen, "Relations:", panelX+padding, y)
 		y += 20
 
-		// Colete as chaves do mapa
+		
 		keys := make([]string, 0, len(sim.selected.Relation))
 		for otherId := range sim.selected.Relation {
 			keys = append(keys, string(otherId))
 		}
 
-		// Ordene as chaves
+		
 		sort.Strings(keys)
 
-		// Itere sobre as chaves ordenadas
+		
 		for _, otherId := range keys {
 			relation := sim.selected.Relation[ag.IdAgent(otherId)]
 			relationType := getRelationType(relation)
@@ -533,16 +564,16 @@ func (sim *Simulation) drawMap(screen *ebiten.Image) {
 func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
 
-	// Primeiro, desenha as linhas de conexão entre agentes em discussão
+	
 	for _, agent := range sim.agents {
 		if agent.CurrentAction == "Discussing" && agent.DiscussingWith != nil {
-			// Desenha uma linha conectando os agentes que estão discutindo
+		
 			startX := agent.Position.X + float64(AgentImageSize)/2
 			startY := agent.Position.Y + float64(AgentImageSize)/2
 			endX := agent.DiscussingWith.Position.X + float64(AgentImageSize)/2
 			endY := agent.DiscussingWith.Position.Y + float64(AgentImageSize)/2
 
-			// Escolhe a cor da linha baseado nos tipos dos agentes
+		
 			lineColor := color.RGBA{150, 150, 150, 255}
 			vector.StrokeLine(
 				screen,
@@ -557,12 +588,12 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 		}
 	}
 
-	// Depois desenha os agentes
+	
 	for _, agent := range sim.agents {
 		opts.GeoM.Reset()
 		opts.GeoM.Translate(agent.Position.X, agent.Position.Y)
 
-		// Removido o efeito de luz para agentes em discussão
+		
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
 		screen.DrawImage(subImg, &opts)
 
@@ -580,44 +611,44 @@ func (sim *Simulation) drawDialogBox(screen *ebiten.Image, agent ag.Agent) {
 	x := int(agent.Position.X) - dialogWidth/2 + AgentImageSize/2
 	y := int(agent.Position.Y) - dialogHeight - 5
 
-	// Desenha o fundo da caixa de diálogo
+	
 	bgColor := color.RGBA{255, 255, 255, 200}
 
-	// Muda a cor do fundo baseado na ação
+
 	switch agent.CurrentAction {
 	case "Discussing":
-		// Cor diferente para discussão
+		
 		switch agent.TypeAgt {
 		case ag.Believer:
-			bgColor = color.RGBA{200, 230, 255, 200} // Azul claro
+			bgColor = color.RGBA{200, 230, 255, 200} 
 		case ag.Sceptic:
-			bgColor = color.RGBA{255, 200, 200, 200} // Vermelho claro
+			bgColor = color.RGBA{255, 200, 200, 200}
 		case ag.Neutral:
-			bgColor = color.RGBA{200, 255, 200, 200} // Verde claro
+			bgColor = color.RGBA{200, 255, 200, 200} 
 		}
 	case "Praying":
-		bgColor = color.RGBA{255, 255, 200, 200} // Amarelo claro
+		bgColor = color.RGBA{255, 255, 200, 200} 
 	case "Using Computer":
-		bgColor = color.RGBA{200, 200, 255, 200} // Roxo claro
+		bgColor = color.RGBA{200, 200, 255, 200} 
 	}
 
-	// Desenha o fundo da caixa de diálogo
+	
 	vector.DrawFilledRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), bgColor, false)
 
-	// Desenha a borda da caixa de diálogo
+
 	vector.StrokeRect(screen, float32(x), float32(y), float32(dialogWidth), float32(dialogHeight), 1, color.Black, false)
 
-	// Prepara o texto baseado na ação
+
 	displayText := agent.CurrentAction
 	if agent.CurrentAction == "Discussing" {
-		// Adiciona um indicador do tipo de agente na discussão
+
 		displayText = fmt.Sprintf("%s (%s)", agent.CurrentAction, agent.TypeAgt)
 	}
 
-	// Desenha o texto da ação
+
 	text.Draw(screen, displayText, sim.dialogFont, x+5, y+20, color.Black)
 
-	// Adiciona uma barra de progresso para o DialogTimer
+	
 	if agent.DialogTimer > 0 {
 		progressWidth := float32(dialogWidth-10) * (float32(agent.DialogTimer) / 180.0)
 		vector.DrawFilledRect(
@@ -647,12 +678,12 @@ func (sim *Simulation) Update() error {
 	case <-sim.ctx.Done():
 		return ebiten.Termination
 	default:
-		// Detecção de cliques
+	
 		cursorX, cursorY := ebiten.CursorPosition()
 
-		// Detecta clique do mouse
+
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			// Verifica clique em agentes
+	
 			for i := range sim.agents {
 				agent := &sim.agents[i]
 				if cursorX >= int(agent.Position.X) &&
@@ -667,7 +698,7 @@ func (sim *Simulation) Update() error {
 				}
 			}
 
-			// Verifica clique em computadores
+		
 			for i := range sim.objets {
 				if sim.objets[i].GetType() != ag.ComputerType {
 					continue
@@ -689,7 +720,7 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		// Atualização dos timers e estados
+		
 		for i := range sim.agents {
 			if sim.agents[i].TimeLastStatue >= 0 && sim.agents[i].TypeAgt == ag.Believer {
 				sim.agents[i].TimeLastStatue++
@@ -707,22 +738,37 @@ func (sim *Simulation) Update() error {
 			}
 		}
 
-		// Atualiza o agente selecionado se existir
+	
 		if sim.selected != nil {
-			// Atualiza a referência para garantir dados atualizados
+			
 			sim.selected = sim.env.GetAgentById(sim.selected.Id)
 		}
 
-		// Calcular a média de opiniões
+		
 		totalOpinion := 0.0
 		for _, agent := range sim.agents {
 			totalOpinion += agent.Opinion
 		}
 		averageOpinion := totalOpinion / float64(len(sim.agents))
 		sim.opinionAverages = append(sim.opinionAverages, averageOpinion)
+
+	
+		if len(sim.opinionAverages)%100 == 0 {
+			file, err := os.OpenFile(filename_now, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			_, err = file.WriteString(fmt.Sprintf("Step %d: %.2f\n", len(sim.opinionAverages), averageOpinion))
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
+
+var filename_now = "opinion_averages_" + time.Now().Format("20060102_150405") + ".txt"
 
 func (sim *Simulation) Run() error {
 	defer sim.cancel()
@@ -735,15 +781,22 @@ func (sim *Simulation) Run() error {
 		sim.start = time.Now()
 	}()
 
+
+	file, err := os.Create(fmt.Sprintf("%s", filename_now))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+
 	if err := ebiten.RunGame(sim); err != nil && err != ebiten.Termination {
 		return err
 	}
 
-	// Affichages de finalisation
+
 	fmt.Println("\n--- Simulation Terminée ---")
 	fmt.Printf("Durée totale : %s\n", time.Since(sim.start).Round(time.Second))
 
-	// Comptage des agents par type
 	agentCounts := make(map[ag.TypeAgent]int)
 	for _, agent := range sim.agents {
 		agentCounts[agent.TypeAgt]++
@@ -753,7 +806,7 @@ func (sim *Simulation) Run() error {
 		fmt.Printf("- %s : %d\n", agentType, count)
 	}
 
-	// Statistiques supplémentaires
+
 	totalOpinion := 0.0
 	for _, agent := range sim.agents {
 		totalOpinion += agent.Opinion
@@ -761,7 +814,7 @@ func (sim *Simulation) Run() error {
 	averageOpinion := totalOpinion / float64(len(sim.agents))
 	fmt.Printf("\nOpinion moyenne des agents : %.2f\n", averageOpinion)
 
-	// Gerar e salvar o gráfico
+	
 	xValues := make([]float64, len(sim.opinionAverages))
 	for i := range xValues {
 		xValues[i] = float64(i)
@@ -776,12 +829,29 @@ func (sim *Simulation) Run() error {
 		},
 	}
 
-	file, err := os.Create("opinion_averages.png")
+
+	timeStamp := time.Now().Format("20060102_150405")
+	numAgents := len(sim.agents)
+	agentTypeInfo := ""
+	for agentType, count := range agentCounts {
+		agentTypeInfo += fmt.Sprintf("%s%d_", agentType, count)
+	}
+	movementStrategies := make(map[ag.MovementStrategy]int)
+	for _, agent := range sim.agents {
+		movementStrategies[agent.MovementStrategy]++
+	}
+	strategyInfo := ""
+	for strategy, count := range movementStrategies {
+		strategyInfo += fmt.Sprintf("%s%d_", strategy, count)
+	}
+	fileName := fmt.Sprintf("opinion_averages_%s_%d_%s%s.png", timeStamp, numAgents, agentTypeInfo, strategyInfo)
+
+	filePNG, err := os.Create(fileName)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	err = graph.Render(chart.PNG, file)
+	defer filePNG.Close()
+	err = graph.Render(chart.PNG, filePNG)
 	if err != nil {
 		return err
 	}

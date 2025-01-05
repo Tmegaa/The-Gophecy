@@ -20,6 +20,14 @@ const (
 	CenterOfMassMovement
 )
 
+type TypeAgentStrategy int
+
+const (
+	Convincente TypeAgentStrategy = iota
+	Independente
+	Explorador
+)
+
 func (m MovementStrategy) String() string {
 	return [...]string{"Random", "Patrol", "HeatMap", "CenterOfMass"}[m]
 }
@@ -147,7 +155,7 @@ func (env *Environnement) Move(ag *Agent) {
 		return
 	}
 
-	// Usa a estratégia definida para cada tipo de agente
+	
 	switch ag.MovementStrategy {
 	case RandomMovement:
 		env.moveRandom(ag)
@@ -189,20 +197,20 @@ func (env *Environnement) moveWithHeatMap(ag *Agent) {
 
 // Mouvement de patrouille pour les Neutrals
 func (env *Environnement) movePatrol(ag *Agent) {
-	// Chance de mudar de direção mesmo se não chegou ao waypoint
+
 	if ag.CurrentWaypoint != nil && rand.Float64() < 0.02 {
 		ag.CurrentWaypoint = nil
 	}
 
-	// Se não tem waypoint atual ou está próximo do waypoint atual
+	
 	if ag.CurrentWaypoint == nil || ut.Distance(ag.Position, *ag.CurrentWaypoint) < 5.0 {
 		if len(ag.HeatMap.Positions) > 0 {
-			// Tenta encontrar um waypoint válido
-			maxAttempts := 10 // Limite de tentativas para evitar loop infinito
+			
+			maxAttempts := 10 
 			attempts := 0
 
 			for attempts < maxAttempts {
-				// Seleciona 3 pontos aleatórios
+				
 				numChoices := 3
 				choices := make([]ut.Position, 0, numChoices)
 
@@ -210,7 +218,7 @@ func (env *Environnement) movePatrol(ag *Agent) {
 					randomIdx := rand.Intn(len(ag.HeatMap.Positions))
 					pos := ag.HeatMap.Positions[randomIdx]
 
-					// Verifica se o caminho até o ponto está livre
+					
 					if isPathClear(ag.Position, pos, env.Carte.Coliders) {
 						choices = append(choices, pos)
 					}
@@ -223,20 +231,20 @@ func (env *Environnement) movePatrol(ag *Agent) {
 					for _, pos := range choices {
 						dist := ut.Distance(ag.Position, pos)
 
-						// Ajusta os critérios de distância
+						
 						distScore := 0.0
-						if dist < 50 { // Reduz distância mínima
+						if dist < 50 { 
 							distScore = dist / 50
-						} else if dist > 200 { // Reduz distância máxima
+						} else if dist > 200 { 
 							distScore = 2 - (dist-200)/200
 						} else {
 							distScore = 1.0
 						}
 
-						// Adiciona fator de desvio de objetos
+						
 						obstacleScore := getObstacleAvoidanceScore(pos, env.Carte.Coliders)
 
-						// Combina os scores
+						
 						randomFactor := 0.5 + rand.Float64()
 						finalScore := (distScore*0.4 + obstacleScore*0.4) * randomFactor
 
@@ -255,7 +263,7 @@ func (env *Environnement) movePatrol(ag *Agent) {
 				attempts++
 			}
 
-			// Se não encontrou um waypoint válido, usa movimento aleatório
+			
 			if ag.CurrentWaypoint == nil {
 				env.moveRandom(ag)
 				return
@@ -263,27 +271,27 @@ func (env *Environnement) movePatrol(ag *Agent) {
 		}
 	}
 
-	// Movimento em direção ao waypoint
+	
 	if ag.CurrentWaypoint != nil {
 		dx := ag.CurrentWaypoint.X - ag.Position.X
 		dy := ag.CurrentWaypoint.Y - ag.Position.Y
 
 		// Reduz a variação aleatória
-		dx += (rand.Float64()*2 - 1) * 2 // Reduz para ±2 pixels
+		dx += (rand.Float64()*2 - 1) * 2 
 		dy += (rand.Float64()*2 - 1) * 2
 
 		length := math.Sqrt(dx*dx + dy*dy)
 		if length > 0 {
-			speed := ut.Maxspeed * (0.9 + rand.Float64()*0.2) // Velocidade mais consistente
+			speed := ut.Maxspeed * (0.9 + rand.Float64()*0.2) 
 			ag.Position.Dx = (dx / length) * speed
 			ag.Position.Dy = (dy / length) * speed
 		}
 	}
 }
 
-// Função auxiliar para verificar se o caminho está livre
+
 func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
-	// Verifica alguns pontos ao longo do caminho
+
 	steps := 10
 	dx := (end.X - start.X) / float64(steps)
 	dy := (end.Y - start.Y) / float64(steps)
@@ -292,7 +300,6 @@ func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
 		x := start.X + dx*float64(i)
 		y := start.Y + dy*float64(i)
 
-		// Verifica colisão no ponto
 		for _, colider := range coliders {
 			if colider.Overlaps(image.Rect(int(x)-8, int(y)-8, int(x)+8, int(y)+8)) {
 				return false
@@ -302,11 +309,11 @@ func isPathClear(start, end ut.Position, coliders []image.Rectangle) bool {
 	return true
 }
 
-// Função para calcular score de desvio de obstáculos
+
 func getObstacleAvoidanceScore(pos ut.Position, coliders []image.Rectangle) float64 {
 	minDistance := math.MaxFloat64
 
-	// Encontra a distância ao obstáculo mais próximo
+	
 	for _, colider := range coliders {
 		centerX := float64(colider.Min.X+colider.Max.X) / 2
 		centerY := float64(colider.Min.Y+colider.Max.Y) / 2
@@ -317,7 +324,7 @@ func getObstacleAvoidanceScore(pos ut.Position, coliders []image.Rectangle) floa
 		}
 	}
 
-	// Normaliza o score (quanto mais longe dos obstáculos, melhor)
+
 	if minDistance < 30 {
 		return 0
 	}
@@ -446,25 +453,43 @@ func (env *Environnement) SetPoids() {
 	}
 }
 
-func (env *Environnement) SetRelations() {
+
+func (env *Environnement) SetRelations(b1 TypeAgentStrategy, b2 TypeAgentStrategy, b3 TypeAgentStrategy) {
 	for _, ag := range env.Ags {
 		for _, ag2 := range env.Ags {
 			if ag.ID() != ag2.ID() {
-				close := rand.Float64()
-				switch {
-				case close < 0.25: //ennemi
-					ag.Relation[ag2.ID()] = 0.75
-				case close < 0.5: //pas de liens direct
-					ag.Relation[ag2.ID()] = 1
-				case close < 0.75: //amis
-					ag.Relation[ag2.ID()] = 1.25
-				case close < 1: //famille
-					ag.Relation[ag2.ID()] = 1.5
+				switch ag.TypeAgt {
+				case Believer:
+					switch b1 {
+					case Convincente:
+						ag.Relation[ag2.ID()] = 1.5 
+					case Independente:
+						ag.Relation[ag2.ID()] = 1.0 
+					case Explorador:
+						ag.Relation[ag2.ID()] = 1.25 
+					}
+				case Sceptic:
+					switch b2 {
+					case Convincente:
+						ag.Relation[ag2.ID()] = 1.5
+					case Independente:
+						ag.Relation[ag2.ID()] = 1.0
+					case Explorador:
+						ag.Relation[ag2.ID()] = 1.25
+					}
+				case Neutral:
+					switch b3 {
+					case Convincente:
+						ag.Relation[ag2.ID()] = 1.5
+					case Independente:
+						ag.Relation[ag2.ID()] = 1.0
+					case Explorador:
+						ag.Relation[ag2.ID()] = 1.25
+					}
 				}
 			} else {
-				ag.Relation[ag2.ID()] = 1
+				ag.Relation[ag2.ID()] = 1.0 
 			}
-
 		}
 	}
 }

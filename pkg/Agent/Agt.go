@@ -80,21 +80,21 @@ func getRandomSubType(typeAgt TypeAgent) SubTypeAgent {
 		return None
 	}
 
-	// Probabilidade de ter um subtipo (70% de chance)
+
 	if rand.Float64() > 0.7 {
 		return None
 	}
 
 	switch typeAgt {
 	case Believer:
-		// Para Believer: 60% Converter, 40% Pirate
+		// Believer: 60% Converter, 40% Pirate
 		if rand.Float64() < 0.6 {
 			return Converter
 		}
 		return Pirate
 
 	case Sceptic:
-		// Para Sceptic: 60% Pirate, 40% Converter
+		//  Sceptic: 60% Pirate, 40% Converter
 		if rand.Float64() < 0.6 {
 			return Pirate
 		}
@@ -117,10 +117,10 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 			char := v / personalCharisme
 		}
 	*/
-	// Determina o subtipo baseado no tipo do agente
+	
 	subType := getRandomSubType(typeAgt)
 
-	// Log para debug
+	
 	log.Printf("New agent created - ID: %s, Type: %s, SubType: %s", id, typeAgt, subType)
 
 	return &Agent{
@@ -137,7 +137,7 @@ func NewAgent(env *Environnement, id IdAgent, velocite float64, acuite float64, 
 		Poids_abs:         poids_abs,
 		Vivant:            true,
 		TypeAgt:           typeAgt,
-		SubType:           subType, // Usando o subtipo determinado
+		SubType:           subType, 
 		SyncChan:          syncChan,
 		Img:               img,
 		MoveTimer:         60,
@@ -237,7 +237,7 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 	env.Lock()
 	defer env.Unlock()
 
-	// Verifica se há objetos ou agentes próximos
+	
 	hasObjects := len(obj) > 0
 	hasAgents := len(nearbyAgents) > 0
 
@@ -245,10 +245,10 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 		return "Move"
 	}
 
-	// Define prioridade baseada no subtipo
+	
 	switch ag.SubType {
 	case Pirate:
-		// Piratas priorizam computadores
+		
 		if hasObjects {
 			for _, o := range obj {
 				if computer, ok := (*o).(*Computer); ok {
@@ -259,26 +259,26 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 				}
 			}
 		}
-		// Se não encontrar computador, tenta interagir
+		
 		if hasAgents {
 			return ag.tryInteractWithAgents(env, nearbyAgents)
 		}
 
 	case Converter:
-		// Converters priorizam interação com outros agentes
+		
 		if hasAgents {
 			result := ag.tryInteractWithAgents(env, nearbyAgents)
 			if result != "Move" {
 				return result
 			}
 		}
-		// Se não puder interagir, tenta usar objetos
+		
 		if hasObjects {
 			return ag.tryUseObjects(obj)
 		}
 
-	default: // None ou outros subtipos
-		// Comportamento padrão: escolhe aleatoriamente entre objetos e agentes
+	default: 
+		
 		if rand.Float64() < 0.5 && hasObjects {
 			return ag.tryUseObjects(obj)
 		} else if hasAgents {
@@ -289,7 +289,6 @@ func (ag *Agent) Deliberate(env *Environnement, nearbyAgents []*Agent, obj []*In
 	return "Move"
 }
 
-// Função auxiliar para tentar interagir com agentes próximos
 func (ag *Agent) tryInteractWithAgents(env *Environnement, nearbyAgents []*Agent) string {
 	for i := range nearbyAgents {
 		otherAgent := env.GetAgentById(nearbyAgents[i].Id)
@@ -302,7 +301,6 @@ func (ag *Agent) tryInteractWithAgents(env *Environnement, nearbyAgents []*Agent
 	return "Move"
 }
 
-// Função auxiliar para tentar usar objetos próximos
 func (ag *Agent) tryUseObjects(obj []*InterfaceObjet) string {
 	for _, o := range obj {
 		switch concrete := (*o).(type) {
@@ -350,24 +348,21 @@ func (ag *Agent) useComputer(computer *Computer) string {
 }
 
 func (ag *Agent) shouldInteract(other *Agent) bool {
-	// Se algum dos agentes está ocupado, não deve interagir
+	
 	if ag.Occupied || other.Occupied {
 		return false
 	}
 
-	// Verifica se o outro agente já está em discussão com alguém
 	if other.CurrentAction == "Discussing" {
 		return false
 	}
 
-	// Verifica se já conversou recentemente com este agente
 	for _, lastTalked := range ag.LastTalkedTo {
 		if lastTalked.Id == other.Id {
 			return false
 		}
 	}
 
-	// Verifica se o tipo de agente influencia a interação
 	if ag.TypeAgt == other.TypeAgt {
 		return ag.Opinion != other.Opinion
 	}
@@ -393,28 +388,27 @@ func (ag *Agent) setOpinion(ag2 *Agent) {
 
 }
 func (ag *Agent) interactWithAgent(other *Agent) string {
-	// Apenas verifica se é possível interagir
+
 	if other.Occupied || other.CurrentAction == "Discussing" {
 		return "Wait"
 	}
 
-	// Retorna "Discuss" com o agente alvo
+
 	ag.DiscussingWith = other
 	return "Discuss"
 }
 
 func (ag *Agent) addToTalkHistory(other *Agent) {
-	// Verifica se o agente já está no histórico
+	
 	for _, a := range ag.LastTalkedTo {
 		if a.Id == other.Id {
-			return // Se já está no histórico, não adiciona novamente
+			return 
 		}
 	}
 
-	// Adiciona o novo agente ao início do histórico
 	ag.LastTalkedTo = append([]*Agent{other}, ag.LastTalkedTo...)
 
-	// Mantém apenas os últimos MaxLastTalked agentes
+	
 	if len(ag.LastTalkedTo) > ag.MaxLastTalked {
 		ag.LastTalkedTo = ag.LastTalkedTo[:ag.MaxLastTalked]
 	}
@@ -468,14 +462,14 @@ func (ag *Agent) Act(env *Environnement, choice string) {
 
 func (ag *Agent) SetAction(action string) {
 	ag.CurrentAction = action
-	ag.DialogTimer = 180 // 2 segundos a 60 FPS
+	ag.DialogTimer = 180 
 }
 
 func (ag *Agent) ClearAction() {
 	switch ag.CurrentAction {
 	case "Discussing":
 		if ag.DiscussingWith != nil {
-			// Limpa também o estado do outro agente
+		
 			ag.setOpinion(ag.DiscussingWith)
 			ag.DiscussingWith.CurrentAction = "Running"
 			ag.DiscussingWith.Occupied = false
@@ -560,7 +554,7 @@ func (env *Environnement) GetAgentById(id IdAgent) *Agent {
 func (ag *Agent) CheckType() {
 	oldType := ag.TypeAgt
 
-	// Atualiza o tipo baseado na opinião
+	
 	if ag.Opinion > 0.66 {
 		ag.TypeAgt = Believer
 		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentBelieverImageFile)
@@ -572,17 +566,17 @@ func (ag *Agent) CheckType() {
 		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentNeutralImageFile)
 	}
 
-	// Se o tipo mudou, recalcula o subtipo
+
 	if oldType != ag.TypeAgt {
-		// Log para debug
+	
 		log.Printf("Agent %v changed type from %v to %v", ag.Id, oldType, ag.TypeAgt)
 		log.Printf("Old subtype: %v", ag.SubType)
 
-		// Se virou Neutral, perde o subtipo
+		
 		if ag.TypeAgt == Neutral {
 			ag.SubType = None
 		} else {
-			// Se era Neutral e virou outro tipo, ou se mudou entre Believer/Sceptic
+			
 			ag.SubType = getRandomSubType(ag.TypeAgt)
 		}
 
