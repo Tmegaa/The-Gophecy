@@ -1,10 +1,11 @@
 package pkg
 
 import (
-	ut "Gophecy/pkg/Utilitaries"
 	"math"
 	"sort"
 	"sync"
+
+	ut "github.com/Tmegaa/The-Gophecy/pkg/Utilitaries"
 )
 
 type VisitationMap struct {

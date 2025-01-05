@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	ut "Gophecy/pkg/Utilitaries"
+	ut "github.com/Tmegaa/The-Gophecy/pkg/Utilitaries"
 	"log"
 	"time"
 

@@ -1,10 +1,6 @@
 package simulation
 
 import (
-	ag "Gophecy/pkg/Agent"
-	carte "Gophecy/pkg/Carte"
-	tile "Gophecy/pkg/Tile"
-	ut "Gophecy/pkg/Utilitaries"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,6 +12,11 @@ import (
 	"os"
 	"sort"
 	"time"
+
+	ag "github.com/Tmegaa/The-Gophecy/pkg/Agent"
+	carte "github.com/Tmegaa/The-Gophecy/pkg/Carte"
+	tile "github.com/Tmegaa/The-Gophecy/pkg/Tile"
+	ut "github.com/Tmegaa/The-Gophecy/pkg/Utilitaries"
 
 	"github.com/golang/freetype/truetype"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -197,13 +198,13 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 
 	for i := 0; i < config.NumAgents; i++ {
 		// Génère des valeurs aléatoires en rescpectant les contraintes de type s'il y en a
-		
+
 		var Opinion float64
 		if i < config.NumBelievers {
 			Opinion = rand.Float64()*(1./3.) + 2./3.
-		} else if i < config.NumBelievers + config.NumSceptics {
-			Opinion = rand.Float64()*(1./3.)
-		} else if i < config.NumBelievers + config.NumSceptics + config.NumNeutrals {
+		} else if i < config.NumBelievers+config.NumSceptics {
+			Opinion = rand.Float64() * (1. / 3.)
+		} else if i < config.NumBelievers+config.NumSceptics+config.NumNeutrals {
 			Opinion = rand.Float64()*(1./3.) + 1./3.
 		} else {
 			Opinion = rand.Float64()
@@ -225,7 +226,6 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		personalParameter := 0.1 + rand.Float64()*4.0 - 0.1
 		// Crée une carte de charisme
 		charisme := make(map[ag.IdAgent]float64)
-
 
 		// Crée une carte des relations entre agents
 		relation := make(map[ag.IdAgent]float64)
@@ -273,12 +273,12 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 
 // Structure pour contenir les données des agents à partir d'un fichier
 type AgentData struct {
-	Id                string  `json:"id"`
-	Opinion           float64 `json:"opinion"`
+	Id                string             `json:"id"`
+	Opinion           float64            `json:"opinion"`
 	Charisme          map[string]float64 `json:"charisme"`
 	Relation          map[string]float64 `json:"relation"`
-	PersonalParameter float64 `json:"personalParameter"`
-	SubType           string  `json:"subType"`
+	PersonalParameter float64            `json:"personalParameter"`
+	SubType           string             `json:"subType"`
 }
 
 // Fonction pour créer des agents à partir d'un fichier
@@ -568,7 +568,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 				continue
 			}
 			if pc.GetProgramm() == computerType {
-				count++ 
+				count++
 			}
 		}
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", computerType, count), panelX+padding, y)

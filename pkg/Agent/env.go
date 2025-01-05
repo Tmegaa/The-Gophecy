@@ -1,12 +1,13 @@
 package pkg
 
 import (
-	carte "Gophecy/pkg/Carte"
-	ut "Gophecy/pkg/Utilitaries"
 	"image"
 	"math"
 	"math/rand"
 	"sync"
+
+	carte "github.com/Tmegaa/The-Gophecy/pkg/Carte"
+	ut "github.com/Tmegaa/The-Gophecy/pkg/Utilitaries"
 )
 
 var lsType = []TypeAgent{Sceptic, Believer, Neutral}

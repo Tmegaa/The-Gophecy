@@ -1,10 +1,11 @@
 package simulation
 
 import (
-	ag "Gophecy/pkg/Agent"
 	"fmt"
 	"strconv"
 	"time"
+
+	ag "github.com/Tmegaa/The-Gophecy/pkg/Agent"
 )
 
 // Type qui gère la configuration de la simulation
@@ -24,7 +25,7 @@ type SimulationConfig struct {
 func ShowMenu() SimulationConfig {
 	config := SimulationConfig{}
 
-	fmt.Println("\nBienvenue dans la Simulation Gophecy!")
+	fmt.Println("\nBienvenue dans la Simulation github.com/Tmegaa/The-Gophecy/!")
 	fmt.Println("----------------------------------------")
 
 	// Choix du mode de configuration

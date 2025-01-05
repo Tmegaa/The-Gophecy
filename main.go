@@ -1,7 +1,7 @@
 package main
 
 import (
-	sim "Gophecy/pkg/Simulation"
+	sim "github.com/Tmegaa/The-Gophecy/pkg/Simulation"
 	"log"
 )
 

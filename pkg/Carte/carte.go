@@ -1,8 +1,9 @@
 package carte
 
 import (
-	tile "Gophecy/pkg/Tile"
 	"image"
+
+	tile "github.com/Tmegaa/The-Gophecy/pkg/Tile"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )

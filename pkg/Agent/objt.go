@@ -1,8 +1,9 @@
 package pkg
 
 import (
-	pos "Gophecy/pkg/Utilitaries"
 	"sync"
+
+	pos "github.com/Tmegaa/The-Gophecy/pkg/Utilitaries"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
