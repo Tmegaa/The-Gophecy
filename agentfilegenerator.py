@@ -11,7 +11,7 @@ RELATION_TYPES = {
     "4": 1.5    # Famille
 }
 
-def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random_relations=False, distribution="uniform", params=None):
+def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random_relations=False, distribution="uniform", params=None, personal_param_distribution="uniform", personal_param_params=None):
     agents = []
     total_agents = num_believers + num_sceptics + num_neutrals
 
@@ -39,7 +39,13 @@ def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random
         else:
             relation = {f"Agent{j}": relations[agent_type] for j in range(total_agents) if j != i}
         
-        personal_parameter = round(random.uniform(0.1, 1.5), 2)
+        if personal_param_distribution == "uniform":
+            personal_parameter = round(random.uniform(personal_param_params["min"], personal_param_params["max"]), 2)
+        elif personal_param_distribution == "normal":
+            mean = personal_param_params.get("mean", 3.0)
+            std_dev = personal_param_params.get("std_dev", 0.1)
+            personal_parameter = round(np.clip(np.random.normal(mean, std_dev), 0, 6), 2)
+        
         sub_type = random.choice(SUBTYPES)
         
         agent = {
@@ -81,6 +87,15 @@ if __name__ == "__main__":
         params["mean"] = float(input("Enter the mean for the normal distribution: "))
         params["std_dev"] = float(input("Enter the standard deviation for the normal distribution: "))
 
-    agents = generate_agents(num_believers, num_sceptics, num_neutrals, relations, random_relations, distribution, params)
+    personal_param_distribution = input("Choose the distribution for personalParameter (uniform/normal): ").lower()
+    personal_param_params = {}
+    if personal_param_distribution == "uniform":
+        personal_param_params["min"] = float(input("Enter the minimum value for the uniform distribution: "))
+        personal_param_params["max"] = float(input("Enter the maximum value for the uniform distribution: "))
+    elif personal_param_distribution == "normal":
+        personal_param_params["mean"] = float(input("Enter the mean for the normal distribution: "))
+        personal_param_params["std_dev"] = float(input("Enter the standard deviation for the normal distribution: "))
+
+    agents = generate_agents(num_believers, num_sceptics, num_neutrals, relations, random_relations, distribution, params, personal_param_distribution, personal_param_params)
     save_agents_to_file(agents, "agents.json")
     print(f"Generated {len(agents)} agents and saved to agents.json")
