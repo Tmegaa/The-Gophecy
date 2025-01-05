@@ -11,8 +11,10 @@ Les agents, des étudiants d'ingénierie informatique au sein d'un campus, sont 
 Pour simplement récupérer le module et pouvoir faire tourner la simulation:
 
 ```{bash}
-go env -w GOPRIVATE=github.com/Tmegaa/*
 go install github.com/Tmegaa/The-Gophecy@latest
+```
+Les fichiers se trouvent dans le GOPATH dans le dossier `pkg/mod/gitlab.utc.fr/`
+```{bash}
 go run .
 ```
 
