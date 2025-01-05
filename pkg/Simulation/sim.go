@@ -47,13 +47,13 @@ const (
 )
 
 type Simulation struct {
-	env                ag.Environnement
-	agents             []ag.Agent
+	env                *ag.Environnement
+	agents             []*ag.Agent
 	objets             []ag.InterfaceObjet
 	maxStep            int
 	maxDuration        time.Duration
 	start              time.Time
-	carte              carte.Carte
+	carte              *carte.Carte
 	selected           *ag.Agent
 	selectedPC         *ag.Computer
 	ctx                context.Context
@@ -67,9 +67,9 @@ type Simulation struct {
 func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
-	env := createEnvironment(*carte)
-	obj := loadObjects(&env)
-	agents := createAgents(&env, carte, config)
+	env := createEnvironment(carte)
+	obj := loadObjects(env)
+	agents := createAgents(env, carte, config)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
 	if err != nil {
@@ -86,7 +86,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 		maxStep:     10,
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
-		carte:       *carte,
+		carte:       carte,
 		ctx:         ctx,
 		cancel:      cancel,
 		dialogFont: truetype.NewFace(tt, &truetype.Options{
@@ -105,8 +105,8 @@ func initializeWindow() {
 }
 
 // Fonction qui crée et retourne un nouvel environnement
-func createEnvironment(carte carte.Carte) ag.Environnement {
-	return *ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
+func createEnvironment(carte *carte.Carte) *ag.Environnement {
+	return ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
 // Fonction qui charge la carte
@@ -165,8 +165,8 @@ func getValidSpawnPositions(carte *carte.Carte) []ut.Position {
 }
 
 // Fonction qui crée et rajoute à la carte les nouveaux agents
-func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []ag.Agent {
-	agents := make([]ag.Agent, config.NumAgents)
+func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []*ag.Agent {
+	agents := make([]*ag.Agent, config.NumAgents)
 	validPositions := getValidSpawnPositions(carte)
 	visitationMap := ag.NewVisitationMap(validPositions)
 
@@ -212,6 +212,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		// Crée une carte de charisme
 		charisme := make(map[ag.IdAgent]float64)
 
+
 		// Crée une carte des relations entre agents
 		relation := make(map[ag.IdAgent]float64)
 
@@ -248,12 +249,12 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		// Configure les champs supplémentaires
 		agent.HeatMap = visitationMap
 		agent.MovementStrategy = strategy
-		agents[i] = *agent
-		env.AddAgent(&agents[i])
+		agents[i] = agent
+		env.AddAgent(agent)
 	}
 	env.SetRelations()
 	env.SetPoids()
-	return agents
+	return env.Ags
 }
 
 // Fonction qui affiche une image sur la fenêtre d'affichage
@@ -446,7 +447,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 				continue
 			}
 			if pc.GetProgramm() == computerType {
-				count++
+				count++ 
 			}
 		}
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", computerType, count), panelX+padding, y)
@@ -589,7 +590,7 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
 		screen.DrawImage(subImg, &opts)
 
-		sim.drawDialogBox(screen, agent)
+		sim.drawDialogBox(screen, *agent)
 	}
 }
 
@@ -681,7 +682,7 @@ func (sim *Simulation) Update() error {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			// Vérifie si le clic se situe dans la zone agent
 			for i := range sim.agents {
-				agent := &sim.agents[i]
+				agent := sim.agents[i]
 				if cursorX >= int(agent.Position.X) &&
 					cursorX <= int(agent.Position.X+AgentImageSize) &&
 					cursorY >= int(agent.Position.Y) &&

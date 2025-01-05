@@ -383,8 +383,8 @@ func (ag *Agent) setOpinion(ag2 *Agent) {
 		ag2.Opinion = ag2.Opinion - 0.05
 	} else {
 		// Pour deux agents neutres, on utilise les équations faisant rentrer en compte les paramètres
-		newOpinionAg := ag.Poids_rel[ag2.Id].First*ag.PersonalParameter*ag.Opinion*(1.0-ag.Opinion) + ag.Poids_rel[ag2.Id].Second*ag2.Opinion
-		newOpinionAg2 := ag2.Poids_rel[ag.Id].Second*ag.Opinion + ag2.Poids_rel[ag.Id].First*ag2.PersonalParameter*ag2.Opinion*(1.0-ag2.Opinion)
+		newOpinionAg := ag.Poids_rel[ag2.Id].First * ag.PersonalParameter * ag.Opinion * (1.0-ag.Opinion) + ag.Poids_rel[ag2.Id].Second * ag2.Opinion
+		newOpinionAg2 := ag2.Poids_rel[ag.Id].Second * ag.Opinion + ag2.Poids_rel[ag.Id].First * ag2.PersonalParameter * ag2.Opinion * (1.0-ag2.Opinion)
 		ag.Opinion = newOpinionAg
 		ag2.Opinion = newOpinionAg2
 	}

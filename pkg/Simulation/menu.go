@@ -92,10 +92,10 @@ func getNumAgentsInput(prompt string) int {
 		fmt.Printf("%s: ", prompt)
 		fmt.Scanln(&input)
 		value, err = strconv.Atoi(input)
-		if err == nil && value > 0 && value < 1912 {
+		if err == nil && value >= 0 && value < 1912 {
 			return value
 		}
-		fmt.Println("Veuillez entrer un nombre valide supérieur à 0 et inférieur à 1912.")
+		fmt.Println("Veuillez entrer un nombre valide supérieur ou égal à 0 et inférieur à 1912.")
 	}
 }
 
