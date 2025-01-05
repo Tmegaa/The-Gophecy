@@ -2,7 +2,7 @@ import json
 import random
 import numpy as np
 
-# Constants
+# Constantes
 SUBTYPES = ["None", "Pirate", "Converter"]
 RELATION_TYPES = {
     "1": 0.75,  # Ennemi
@@ -17,6 +17,7 @@ def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random
 
     for i in range(total_agents):
         agent_id = f"Agent{i}"
+        # Déterminer le type d'agent et son opinion initiale
         if i < num_believers:
             opinion = round(random.uniform(2/3, 1), 2)
             agent_type = "Believer"
@@ -27,6 +28,7 @@ def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random
             opinion = round(random.uniform(1/3, 2/3), 2)
             agent_type = "Neutral"
 
+        # Générer le charisme en fonction de la distribution choisie
         if distribution == "uniform":
             charisme = {f"Agent{j}": round(random.uniform(0, 1), 2) for j in range(total_agents) if j != i}
         elif distribution == "normal":
@@ -34,11 +36,13 @@ def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random
             std_dev = params.get("std_dev", 0.1)
             charisme = {f"Agent{j}": round(np.clip(np.random.normal(mean, std_dev), 0, 1), 2) for j in range(total_agents) if j != i}
         
+        # Générer les relations entre agents
         if random_relations:
             relation = {f"Agent{j}": round(random.choice([0.75, 1.0, 1.25, 1.5]), 2) for j in range(total_agents) if j != i}
         else:
             relation = {f"Agent{j}": relations[agent_type] for j in range(total_agents) if j != i}
         
+        # Générer le paramètre personnel en fonction de la distribution choisie
         if personal_param_distribution == "uniform":
             personal_parameter = round(random.uniform(personal_param_params["min"], personal_param_params["max"]), 2)
         elif personal_param_distribution == "normal":
@@ -46,8 +50,10 @@ def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random
             std_dev = personal_param_params.get("std_dev", 0.1)
             personal_parameter = round(np.clip(np.random.normal(mean, std_dev), 0, 6), 2)
         
+        # Choisir un sous-type aléatoire
         sub_type = random.choice(SUBTYPES)
         
+        # Créer l'agent avec ses attributs
         agent = {
             "id": agent_id,
             "opinion": opinion,
@@ -60,18 +66,22 @@ def generate_agents(num_believers, num_sceptics, num_neutrals, relations, random
     return agents
 
 def save_agents_to_file(agents, filename):
+    # Sauvegarder les agents dans un fichier JSON
     with open(filename, 'w') as file:
         json.dump(agents, file, indent=4)
 
 if __name__ == "__main__":
+    # Demander à l'utilisateur le nombre d'agents de chaque type
     num_believers = int(input("Enter the number of Believers: "))
     num_sceptics = int(input("Enter the number of Sceptics: "))
     num_neutrals = int(input("Enter the number of Neutrals: "))
     
+    # Demander si les relations entre agents doivent être aléatoires
     random_relations = input("Do you want random relations between agents? (yes/no): ").lower() == "yes"
     
     relations = {}
     if not random_relations:
+        # Demander à l'utilisateur de choisir le type de relation pour chaque type d'agent
         for agent_type in ["Believer", "Sceptic", "Neutral"]:
             print(f"Choose relation type for {agent_type}s with other agents:")
             print("1 - Ennemi")
@@ -81,12 +91,14 @@ if __name__ == "__main__":
             choice = input(f"Relation type (1-4) for {agent_type}s: ")
             relations[agent_type] = RELATION_TYPES.get(choice, 1.0)
     
+    # Demander à l'utilisateur de choisir la distribution pour le charisme
     distribution = input("Choose the distribution for charisma (uniform/normal): ").lower()
     params = {}
     if distribution == "normal":
         params["mean"] = float(input("Enter the mean for the normal distribution: "))
         params["std_dev"] = float(input("Enter the standard deviation for the normal distribution: "))
 
+    # Demander à l'utilisateur de choisir la distribution pour le paramètre personnel
     personal_param_distribution = input("Choose the distribution for personalParameter (uniform/normal): ").lower()
     personal_param_params = {}
     if personal_param_distribution == "uniform":
@@ -96,6 +108,7 @@ if __name__ == "__main__":
         personal_param_params["mean"] = float(input("Enter the mean for the normal distribution: "))
         personal_param_params["std_dev"] = float(input("Enter the standard deviation for the normal distribution: "))
 
+    # Générer les agents et les sauvegarder dans un fichier
     agents = generate_agents(num_believers, num_sceptics, num_neutrals, relations, random_relations, distribution, params, personal_param_distribution, personal_param_params)
     save_agents_to_file(agents, "agents.json")
     print(f"Generated {len(agents)} agents and saved to agents.json")

@@ -272,7 +272,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 	return env.Ags
 }
 
-// Structure to hold agent data from the file
+// Structure pour contenir les données des agents à partir d'un fichier
 type AgentData struct {
 	Id                string  `json:"id"`
 	Opinion           float64 `json:"opinion"`
@@ -282,33 +282,33 @@ type AgentData struct {
 	SubType           string  `json:"subType"`
 }
 
-// Function to create agents from a file
+// Fonction pour créer des agents à partir d'un fichier
 func createAgentsFromFile(env *ag.Environnement, filePath string) ([]*ag.Agent, error) {
-	// Read the file content
+	// Lire le contenu du fichier
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
+		return nil, fmt.Errorf("échec de la lecture du fichier: %v", err)
 	}
 
-	// Parse the JSON data
+	// Analyser les données JSON
 	var agentsData []AgentData
 	err = json.Unmarshal(data, &agentsData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse JSON data: %v", err)
+		return nil, fmt.Errorf("échec de l'analyse des données JSON: %v", err)
 	}
 
-	// Generate valid positions
+	// Générer des positions valides
 	carte := env.Carte
 	validPositions := getValidSpawnPositions(carte)
 	if len(validPositions) < len(agentsData) {
-		return nil, fmt.Errorf("not enough valid spawn positions for all agents")
+		return nil, fmt.Errorf("pas assez de positions de spawn valides pour tous les agents")
 	}
 
 	rand.Shuffle(len(validPositions), func(i, j int) {
 		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
 	})
 
-	// Create agents from the parsed data
+	// Créer des agents à partir des données analysées
 	agents := make([]*ag.Agent, len(agentsData))
 	for i, agentData := range agentsData {
 		id := ag.IdAgent(agentData.Id)
@@ -321,7 +321,7 @@ func createAgentsFromFile(env *ag.Environnement, filePath string) ([]*ag.Agent, 
 			relation[ag.IdAgent(k)] = v
 		}
 
-		// Determine the type based on the opinion
+		// Déterminer le type en fonction de l'opinion
 		var typeAgt ag.TypeAgent
 		if agentData.Opinion > 2.0/3.0 {
 			typeAgt = ag.Believer
@@ -333,12 +333,12 @@ func createAgentsFromFile(env *ag.Environnement, filePath string) ([]*ag.Agent, 
 
 		subType := ag.SubTypeAgent(agentData.SubType)
 
-		 // Generate velocity, acuity, and position
+		// Générer la vélocité, l'acuité et la position
 		velocite := rand.Float64()
 		acuite := 50.0
 		position := validPositions[i]
 
-		// Load the appropriate image based on the agent type
+		// Charger l'image appropriée en fonction du type d'agent
 		var agentsImg *ebiten.Image
 		switch typeAgt {
 		case ag.Believer:
@@ -348,14 +348,14 @@ func createAgentsFromFile(env *ag.Environnement, filePath string) ([]*ag.Agent, 
 		case ag.Neutral:
 			agentsImg = loadImage(AssetsPath + AgentNeutralImageFile)
 		default:
-			return nil, fmt.Errorf("unknown agent type: %s", typeAgt)
+			return nil, fmt.Errorf("type d'agent inconnu: %s", typeAgt)
 		}
 
 		if agentsImg == nil {
-			return nil, fmt.Errorf("failed to load image for agent type: %s", typeAgt)
+			return nil, fmt.Errorf("échec du chargement de l'image pour le type d'agent: %s", typeAgt)
 		}
 
-		// Create the agent
+		// Créer l'agent
 		agent := ag.NewAgent(
 			env,
 			id,
