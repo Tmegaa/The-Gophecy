@@ -1,4 +1,4 @@
-module Gophecy
+module github.com/Tmegaa/The-Gophecy
 
 go 1.23.1
 
