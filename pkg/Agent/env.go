@@ -43,7 +43,7 @@ type Message struct {
 type Environnement struct {
 	sync.RWMutex
 	Ags             []*Agent
-	Carte           carte.Carte
+	Carte           *carte.Carte
 	Objs            []InterfaceObjet
 	Communication   chan Message //key = IDAgent et value = []*Message -> Liste des messages reçus par l'agent
 	NbrAgents       *sync.Map    //key = typeAgent et value = int  -> Compteur d'agents par types
@@ -52,7 +52,7 @@ type Environnement struct {
 }
 
 // Fonction d'initialisation d'un nouvel environnement
-func NewEnvironment(ags []*Agent, carte carte.Carte, objs []InterfaceObjet) (env *Environnement) {
+func NewEnvironment(ags []*Agent, carte *carte.Carte, objs []InterfaceObjet) *Environnement {
 	// Initialisation du compteur du nombre d'agents par type
 	counter := &sync.Map{}
 

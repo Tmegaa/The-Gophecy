@@ -334,12 +334,17 @@ func (ag *Agent) tryUseObjects(obj []*InterfaceObjet) ActionType {
 // 	return PrayAct
 // }
 
-// Fonction d'action où l'agent tente d'utiliser un ordinateur
+// // Fonction d'action où l'agent tente d'utiliser un ordinateur
 // func (ag *Agent) useComputer(computer *Computer) ActionType {
 // 	if !computer.TryUse() {
 // 		return WaitAct
 // 	}
 
+// 	ag.Occupied = true
+// 	ag.UseComputer = computer
+// 	ag.LastComputer = computer
+// 	return ComputerAct
+// }
 // 	ag.Occupied = true
 // 	ag.UseComputer = computer
 // 	ag.LastComputer = computer
@@ -383,8 +388,8 @@ func (ag *Agent) setOpinion(ag2 *Agent) {
 		ag2.Opinion = ag2.Opinion - 0.05
 	} else {
 		// Pour deux agents neutres, on utilise les équations faisant rentrer en compte les paramètres
-		newOpinionAg := ag.Poids_rel[ag2.Id].First*ag.PersonalParameter*ag.Opinion*(1.0-ag.Opinion) + ag.Poids_rel[ag2.Id].Second*ag2.Opinion
-		newOpinionAg2 := ag2.Poids_rel[ag.Id].Second*ag.Opinion + ag2.Poids_rel[ag.Id].First*ag2.PersonalParameter*ag2.Opinion*(1.0-ag2.Opinion)
+		newOpinionAg := ag.Poids_rel[ag2.Id].First * ag.PersonalParameter * ag.Opinion * (1.0-ag.Opinion) + ag.Poids_rel[ag2.Id].Second * ag2.Opinion
+		newOpinionAg2 := ag2.Poids_rel[ag.Id].Second * ag.Opinion + ag2.Poids_rel[ag.Id].First * ag2.PersonalParameter * ag2.Opinion * (1.0-ag2.Opinion)
 		ag.Opinion = newOpinionAg
 		ag2.Opinion = newOpinionAg2
 	}
@@ -477,7 +482,7 @@ func (ag *Agent) Act(env *Environnement, choice ActionType) {
 // Fonction qui met à jour l'action d'un agent
 func (ag *Agent) SetAction(action ActionType) {
 	ag.CurrentAction = action
-	ag.DialogTimer = 180 // 2 secondes à 60 FPS
+	ag.DialogTimer = 180 // 3 secondes à 60 FPS
 }
 
 // Fonction qui réinitialise l'action d'un agent
@@ -575,15 +580,15 @@ func (ag *Agent) CheckType() {
 	oldType := ag.TypeAgt
 
 	// Mise à jour du type de l'agent par rapport à son opinion
-	if ag.Opinion > 0.66 {
+	if ag.Opinion > 2./3. {
 		ag.TypeAgt = Believer
 		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentBelieverImageFile)
-	} else if ag.Opinion < 0.33 {
-		ag.TypeAgt = Sceptic
-		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentScepticImageFile)
-	} else {
+	} else if ag.Opinion > 1./3. {
 		ag.TypeAgt = Neutral
 		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentNeutralImageFile)
+	} else {
+		ag.TypeAgt = Sceptic
+		ag.Img = loadImageAgt(ut.AssetsPath + ut.AgentScepticImageFile)
 	}
 
 	// Si le type a changé, on recalcule le sous-type

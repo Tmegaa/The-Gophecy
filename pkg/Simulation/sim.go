@@ -6,9 +6,11 @@ import (
 	tile "Gophecy/pkg/Tile"
 	ut "Gophecy/pkg/Utilitaries"
 	"context"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -47,15 +49,12 @@ const (
 )
 
 type Simulation struct {
-	env    ag.Environnement
-	agents []ag.Agent
-	objets []ag.InterfaceObjet
-	// maxStep            int
-	maxDuration time.Duration
-	// step               int
-	start time.Time
-	// syncChans          sync.Map
-	carte              carte.Carte
+	env                *ag.Environnement
+	agents             []*ag.Agent
+	objets             []ag.InterfaceObjet
+	maxDuration        time.Duration
+	start              time.Time
+	carte              *carte.Carte
 	selected           *ag.Agent
 	selectedPC         *ag.Computer
 	ctx                context.Context
@@ -69,9 +68,22 @@ type Simulation struct {
 func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
-	env := createEnvironment(*carte, config.NumAgents)
-	obj := loadObjects(&env, carte)
-	agents := createAgents(&env, carte, config)
+	env := createEnvironment(carte)
+	var agents []*ag.Agent
+	var err error
+
+	if config.AgentsFilePath != "" {
+		// Load agents from file
+		agents, err = createAgentsFromFile(env, config.AgentsFilePath)
+		if err != nil {
+			log.Fatalf("Failed to create agents from file: %v", err)
+		}
+	} else {
+		// Create agents normally
+		agents = createAgents(env, carte, config)
+	}
+
+	obj := loadObjects(env)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
 	if err != nil {
@@ -88,7 +100,7 @@ func NewSimulation(config SimulationConfig) *Simulation {
 		// maxStep:     10,
 		maxDuration: config.SimulationTime,
 		start:       time.Now(),
-		carte:       *carte,
+		carte:       carte,
 		ctx:         ctx,
 		cancel:      cancel,
 		dialogFont: truetype.NewFace(tt, &truetype.Options{
@@ -107,8 +119,8 @@ func initializeWindow() {
 }
 
 // Fonction qui crée et retourne un nouvel environnement
-func createEnvironment(carte carte.Carte, NumAgents int) ag.Environnement {
-	return *ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
+func createEnvironment(carte *carte.Carte) *ag.Environnement {
+	return ag.NewEnvironment(make([]*ag.Agent, 0), carte, make([]ag.InterfaceObjet, 0))
 }
 
 // Fonction qui charge la carte
@@ -124,7 +136,7 @@ func loadMap() *carte.Carte {
 }
 
 // Fonction qui charge les objets dans la carte
-func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet {
+func loadObjects(env *ag.Environnement) []ag.InterfaceObjet {
 	obj := make([]ag.InterfaceObjet, NumComputers+NumStatues)
 
 	for i := 0; i < NumComputers; i++ {
@@ -148,7 +160,7 @@ func loadObjects(env *ag.Environnement, carte *carte.Carte) []ag.InterfaceObjet 
 }
 
 // Fonction qui renvoie une liste des positions possibles que peuvent prendre les objets ou les agents
-func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
+func getValidSpawnPositions(carte *carte.Carte) []ut.Position {
 	validPositions := []ut.Position{}
 	for layerIdx, layer := range carte.TilemapJSON.Layers {
 		for i, tileID := range layer.Data {
@@ -167,9 +179,9 @@ func getValidSpawnPositions(carte *carte.Carte, tilesetID int) []ut.Position {
 }
 
 // Fonction qui crée et rajoute à la carte les nouveaux agents
-func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []ag.Agent {
-	agents := make([]ag.Agent, config.NumAgents)
-	validPositions := getValidSpawnPositions(carte, 1)
+func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationConfig) []*ag.Agent {
+	agents := make([]*ag.Agent, config.NumAgents)
+	validPositions := getValidSpawnPositions(carte)
 	visitationMap := ag.NewVisitationMap(validPositions)
 
 	if len(validPositions) < config.NumAgents {
@@ -184,17 +196,27 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 	agentsImg := loadImage(AssetsPath + AgentBelieverImageFile)
 
 	for i := 0; i < config.NumAgents; i++ {
-		// Génère des valeurs aléatoires
-		Opinion := rand.Float64()
+		// Génère des valeurs aléatoires en rescpectant les contraintes de type s'il y en a
+		
+		var Opinion float64
+		if i < config.NumBelievers {
+			Opinion = rand.Float64()*(1./3.) + 2./3.
+		} else if i < config.NumBelievers + config.NumSceptics {
+			Opinion = rand.Float64()*(1./3.)
+		} else if i < config.NumBelievers + config.NumSceptics + config.NumNeutrals {
+			Opinion = rand.Float64()*(1./3.) + 1./3.
+		} else {
+			Opinion = rand.Float64()
+		}
 
 		// Détermine le type de base de l'agent
 		var TypeChoosen ag.TypeAgent
-		if Opinion < 0.33 {
-			TypeChoosen = ag.Sceptic
-		} else if Opinion < 0.66 {
+		if Opinion > 2./3. {
+			TypeChoosen = ag.Believer
+		} else if Opinion > 1./3. {
 			TypeChoosen = ag.Neutral
 		} else {
-			TypeChoosen = ag.Believer
+			TypeChoosen = ag.Sceptic
 		}
 		id := ag.IdAgent(fmt.Sprintf("Agent%d", i))
 		velocite := rand.Float64()
@@ -203,6 +225,7 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		personalParameter := 0.1 + rand.Float64()*4.0 - 0.1
 		// Crée une carte de charisme
 		charisme := make(map[ag.IdAgent]float64)
+
 
 		// Crée une carte des relations entre agents
 		relation := make(map[ag.IdAgent]float64)
@@ -240,12 +263,119 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 		// Configure les champs supplémentaires
 		agent.HeatMap = visitationMap
 		agent.MovementStrategy = strategy
-		agents[i] = *agent
-		env.AddAgent(&agents[i])
+		agents[i] = agent
+		env.AddAgent(agent)
 	}
 	env.SetRelations()
 	env.SetPoids()
-	return agents
+	return env.Ags
+}
+
+// Structure pour contenir les données des agents à partir d'un fichier
+type AgentData struct {
+	Id                string  `json:"id"`
+	Opinion           float64 `json:"opinion"`
+	Charisme          map[string]float64 `json:"charisme"`
+	Relation          map[string]float64 `json:"relation"`
+	PersonalParameter float64 `json:"personalParameter"`
+	SubType           string  `json:"subType"`
+}
+
+// Fonction pour créer des agents à partir d'un fichier
+func createAgentsFromFile(env *ag.Environnement, filePath string) ([]*ag.Agent, error) {
+	// Lire le contenu du fichier
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("échec de la lecture du fichier: %v", err)
+	}
+
+	// Analyser les données JSON
+	var agentsData []AgentData
+	err = json.Unmarshal(data, &agentsData)
+	if err != nil {
+		return nil, fmt.Errorf("échec de l'analyse des données JSON: %v", err)
+	}
+
+	// Générer des positions valides
+	carte := env.Carte
+	validPositions := getValidSpawnPositions(carte)
+	if len(validPositions) < len(agentsData) {
+		return nil, fmt.Errorf("pas assez de positions de spawn valides pour tous les agents")
+	}
+
+	rand.Shuffle(len(validPositions), func(i, j int) {
+		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
+	})
+
+	// Créer des agents à partir des données analysées
+	agents := make([]*ag.Agent, len(agentsData))
+	for i, agentData := range agentsData {
+		id := ag.IdAgent(agentData.Id)
+		charisme := make(map[ag.IdAgent]float64)
+		for k, v := range agentData.Charisme {
+			charisme[ag.IdAgent(k)] = v
+		}
+		relation := make(map[ag.IdAgent]float64)
+		for k, v := range agentData.Relation {
+			relation[ag.IdAgent(k)] = v
+		}
+
+		// Déterminer le type en fonction de l'opinion
+		var typeAgt ag.TypeAgent
+		if agentData.Opinion > 2.0/3.0 {
+			typeAgt = ag.Believer
+		} else if agentData.Opinion > 1.0/3.0 {
+			typeAgt = ag.Neutral
+		} else {
+			typeAgt = ag.Sceptic
+		}
+
+		subType := ag.SubTypeAgent(agentData.SubType)
+
+		// Générer la vélocité, l'acuité et la position
+		velocite := rand.Float64()
+		acuite := 50.0
+		position := validPositions[i]
+
+		// Charger l'image appropriée en fonction du type d'agent
+		var agentsImg *ebiten.Image
+		switch typeAgt {
+		case ag.Believer:
+			agentsImg = loadImage(AssetsPath + AgentBelieverImageFile)
+		case ag.Sceptic:
+			agentsImg = loadImage(AssetsPath + AgentScepticImageFile)
+		case ag.Neutral:
+			agentsImg = loadImage(AssetsPath + AgentNeutralImageFile)
+		default:
+			return nil, fmt.Errorf("type d'agent inconnu: %s", typeAgt)
+		}
+
+		if agentsImg == nil {
+			return nil, fmt.Errorf("échec du chargement de l'image pour le type d'agent: %s", typeAgt)
+		}
+
+		// Créer l'agent
+		agent := ag.NewAgent(
+			env,
+			id,
+			velocite,
+			acuite,
+			position,
+			agentData.Opinion,
+			charisme,
+			relation,
+			agentData.PersonalParameter,
+			typeAgt,
+			make(chan ag.Message),
+			agentsImg,
+		)
+		agent.SubType = subType
+
+		agents[i] = agent
+		env.AddAgent(agent)
+	}
+	env.SetPoids()
+	return agents, nil
 }
 
 // Fonction qui affiche une image sur la fenêtre d'affichage
@@ -438,7 +568,7 @@ func (sim *Simulation) drawInfoPanel(screen *ebiten.Image) {
 				continue
 			}
 			if pc.GetProgramm() == computerType {
-				count++
+				count++ 
 			}
 		}
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %d", computerType, count), panelX+padding, y)
@@ -581,7 +711,7 @@ func (sim *Simulation) drawAgents(screen *ebiten.Image) {
 		subImg := agent.Img.SubImage(image.Rect(0, 0, AgentImageSize, AgentImageSize)).(*ebiten.Image)
 		screen.DrawImage(subImg, &opts)
 
-		sim.drawDialogBox(screen, agent)
+		sim.drawDialogBox(screen, *agent)
 	}
 }
 
@@ -673,7 +803,7 @@ func (sim *Simulation) Update() error {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			// Vérifie si le clic se situe dans la zone agent
 			for i := range sim.agents {
-				agent := &sim.agents[i]
+				agent := sim.agents[i]
 				if cursorX >= int(agent.Position.X) &&
 					cursorX <= int(agent.Position.X+AgentImageSize) &&
 					cursorY >= int(agent.Position.Y) &&
