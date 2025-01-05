@@ -6,9 +6,11 @@ import (
 	tile "Gophecy/pkg/Tile"
 	ut "Gophecy/pkg/Utilitaries"
 	"context"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -68,8 +70,21 @@ func NewSimulation(config SimulationConfig) *Simulation {
 	initializeWindow()
 	carte := loadMap()
 	env := createEnvironment(carte)
+	var agents []*ag.Agent
+	var err error
+
+	if config.AgentsFilePath != "" {
+		// Load agents from file
+		agents, err = createAgentsFromFile(env, config.AgentsFilePath)
+		if err != nil {
+			log.Fatalf("Failed to create agents from file: %v", err)
+		}
+	} else {
+		// Create agents normally
+		agents = createAgents(env, carte, config)
+	}
+
 	obj := loadObjects(env)
-	agents := createAgents(env, carte, config)
 	ctx, cancel := context.WithTimeout(context.Background(), config.SimulationTime)
 	tt, err := truetype.Parse(goregular.TTF)
 	if err != nil {
@@ -255,6 +270,113 @@ func createAgents(env *ag.Environnement, carte *carte.Carte, config SimulationCo
 	env.SetRelations()
 	env.SetPoids()
 	return env.Ags
+}
+
+// Structure to hold agent data from the file
+type AgentData struct {
+	Id                string  `json:"id"`
+	Opinion           float64 `json:"opinion"`
+	Charisme          map[string]float64 `json:"charisme"`
+	Relation          map[string]float64 `json:"relation"`
+	PersonalParameter float64 `json:"personalParameter"`
+	SubType           string  `json:"subType"`
+}
+
+// Function to create agents from a file
+func createAgentsFromFile(env *ag.Environnement, filePath string) ([]*ag.Agent, error) {
+	// Read the file content
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// Parse the JSON data
+	var agentsData []AgentData
+	err = json.Unmarshal(data, &agentsData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON data: %v", err)
+	}
+
+	// Generate valid positions
+	carte := env.Carte
+	validPositions := getValidSpawnPositions(carte)
+	if len(validPositions) < len(agentsData) {
+		return nil, fmt.Errorf("not enough valid spawn positions for all agents")
+	}
+
+	rand.Shuffle(len(validPositions), func(i, j int) {
+		validPositions[i], validPositions[j] = validPositions[j], validPositions[i]
+	})
+
+	// Create agents from the parsed data
+	agents := make([]*ag.Agent, len(agentsData))
+	for i, agentData := range agentsData {
+		id := ag.IdAgent(agentData.Id)
+		charisme := make(map[ag.IdAgent]float64)
+		for k, v := range agentData.Charisme {
+			charisme[ag.IdAgent(k)] = v
+		}
+		relation := make(map[ag.IdAgent]float64)
+		for k, v := range agentData.Relation {
+			relation[ag.IdAgent(k)] = v
+		}
+
+		// Determine the type based on the opinion
+		var typeAgt ag.TypeAgent
+		if agentData.Opinion > 2.0/3.0 {
+			typeAgt = ag.Believer
+		} else if agentData.Opinion > 1.0/3.0 {
+			typeAgt = ag.Neutral
+		} else {
+			typeAgt = ag.Sceptic
+		}
+
+		subType := ag.SubTypeAgent(agentData.SubType)
+
+		 // Generate velocity, acuity, and position
+		velocite := rand.Float64()
+		acuite := 50.0
+		position := validPositions[i]
+
+		// Load the appropriate image based on the agent type
+		var agentsImg *ebiten.Image
+		switch typeAgt {
+		case ag.Believer:
+			agentsImg = loadImage(AssetsPath + AgentBelieverImageFile)
+		case ag.Sceptic:
+			agentsImg = loadImage(AssetsPath + AgentScepticImageFile)
+		case ag.Neutral:
+			agentsImg = loadImage(AssetsPath + AgentNeutralImageFile)
+		default:
+			return nil, fmt.Errorf("unknown agent type: %s", typeAgt)
+		}
+
+		if agentsImg == nil {
+			return nil, fmt.Errorf("failed to load image for agent type: %s", typeAgt)
+		}
+
+		// Create the agent
+		agent := ag.NewAgent(
+			env,
+			id,
+			velocite,
+			acuite,
+			position,
+			agentData.Opinion,
+			charisme,
+			relation,
+			agentData.PersonalParameter,
+			typeAgt,
+			make(chan ag.Message),
+			agentsImg,
+		)
+		agent.SubType = subType
+
+		agents[i] = agent
+		env.AddAgent(agent)
+	}
+	env.SetPoids()
+	return agents, nil
 }
 
 // Fonction qui affiche une image sur la fenêtre d'affichage
