@@ -13,7 +13,7 @@ Pour simplement récupérer le module et pouvoir faire tourner la simulation:
 ```{bash}
 go install github.com/Tmegaa/The-Gophecy@latest
 ```
-Les fichiers se trouvent dans le GOPATH dans le dossier `pkg/mod/gitlab.utc.fr/`
+Les fichiers se trouvent dans le GOPATH dans le dossier `pkg/mod/github.com/!tmegaa`
 ```{bash}
 go run .
 ```
