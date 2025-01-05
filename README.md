@@ -222,7 +222,7 @@ Finalement, pour l'instant l'utilisateur ne peut pas intervenir dans la simulati
 
 ## 😇  Les Gophètes
 
-- 🌱Lepretre Thomas
+- 🌱 Lepretre Thomas
 - 🐤 Perdereau Tom
 - 🌟 Saby Loyola Sophie
 - 👽 Sporck Trombini Gabriel
