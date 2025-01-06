@@ -32,26 +32,6 @@ Par défaut, la simulation affiche une zone rectangulaire autour de chaque agent
    // sim.drawAcuite(screen)
    ```
 
-## 🔬  Tests avec différents cas de figure
-
-
-> TODO: fill this
-
-
-
-
-Une branche `Feat/Variants` a été créée pour explorer différentes configurations de la simulation. Cette branche introduit plusieurs modifications :
-
-1. **Variation des Objets dans l'Environnement :**
-   - Modification du nombre d'ordinateurs et de statues
-   - Ces changements nécessitent l'utilisation du logiciel TILED pour générer le fichier JSON de la carte avec le placement précis des objets
-
-2. **Nouveaux Types d'Agents :**
-   - Introduction de trois sous-types d'agents basés sur leur paramètre personnel
-   - Ces sous-types permettent de tester différentes dynamiques de comportement et d'interaction
-
-Ces modifications permettent d'étudier l'impact de différentes configurations sur le comportement global du système et l'évolution des croyances des agents.
-
 ## 💻 La Gophétie
 
 ### 1. 📐 L'architecture
@@ -94,9 +74,9 @@ Le degré de croyance dans le langage Go est modélisé chez chaque agent par un
 
 Opinion|Type|Description|
 :--------------: | :--------------: |------------- |
-[0, 0.33[| Sceptique| Ne croit pas dans le langage Go et va essayer des dissuader ses camarades de l'utiliser.|
-[0.33, 0.66]| Neutre| Est mitigé et va être influencé par tous les autres agents.|
-]0.66, 1]| Croyant| Croit que le langage Go est incroyable et aura pour mission de répandre sa croyance en plus d'essayer de l'augmenter.|
+[0, 1/3[| Sceptique| Ne croit pas dans le langage Go et va essayer des dissuader ses camarades de l'utiliser.|
+[1/3, 2/3]| Neutre| Est mitigé et va être influencé par tous les autres agents.|
+]2/3, 1]| Croyant| Croit que le langage Go est incroyable et aura pour mission de répandre sa croyance en plus d'essayer de l'augmenter.|
 
 Après une modification de l'opinion d'un agent, on vérifie son type et on le met à jour si besoin: les types ne sont donc pas statiques tout au long de la simulation, ils peuvent évoluer.
 
@@ -227,7 +207,49 @@ De plus, un graphique détaillant l'opinion globale sur Go en fonction du temps 
 
 ![simu8](/images/results_example.png "Graphique représentant la croyance moyenne de la population en fonction du temps")
 
-### 4.💡 Idées pour la suite
+### 4. 🔬 Tests avec différents cas de figure
+
+Au moment de lancer la simulation, plusieurs options sont disponibles. On peut choisir de lancer la simulation avec un certain nombre d'agents et des paramètres standards, choisir la répartition des agents par type qu'ils auront au début de la simulation ou enfin lancer à partir d'un fichier JSON qui contient toutes les informations individuelles des agents.  
+À chaque lancement de la simulation, il est aussi possible de sélectionner les stratégies de mouvement par type d'agent ainsi que la durée.
+
+En utilisant les datasets JSON, nous pouvons donc étudier l'influence sur le résultat de différents paramètres :
+
+- L'opinion (et donc le type) de départ des agents
+- Le charisme des agents
+- Les relations entre les agents
+- Le paramètre personnel
+- Les stratégies de mouvement
+- Le sous-type de départ des agents
+
+Un fichier Python `agentfilegenerator.py` a été créé afin d'aider à la génération de ces datasets. Il permet de générer un fichier JSON avec les informations de chaque agent, en proposant plusieurs types de distributions pour les paramètres de départ.
+
+Pour tester plus de paramètres, une branche `Feat/Variants` a été créée pour explorer différentes configurations de la simulation. Cette branche introduit plusieurs modifications :
+
+1. **Variation des objets dans l'environnement :**
+   - Modification du nombre d'ordinateurs et de statues
+   - Ces changements nécessitent l'utilisation du logiciel TILED pour générer le fichier JSON de la carte avec le placement précis des objets
+
+2. **Nouveaux types d'agents :**
+   - Introduction de trois sous-types d'agents basés sur leur paramètre personnel
+   - Ces sous-types permettent de tester différentes dynamiques de comportement et d'interaction
+
+Ces modifications permettent d'étudier l'impact de différentes configurations sur le comportement global du système et l'évolution des croyances des agents.
+
+### 5. 📋 Résultats
+
+Suite à nos tests, nous pouvons tirer quelques conclusions :
+
+Tout d'abord, la simulation a tendance à tendre vers le scepticisme si on conserve les paramètres standards, avec une opinion moyenne en fin de simulation qui se situe en général entre 0.35 et 0.45.
+
+Un seul paramètre semble vraiment impacter ce résultat. Il s'agit du paramètre personnel des agents. En effet, si la majorité des agents ont un paramètre personnel inférieur à 2, la simulation tendra vers le scepticisme. Si on continue à augmenter ce paramètre, l'opinion moyenne en fin de simulation augmentera dans un premier temps avec des simulations qui se terminent avec une majorité de croyants quand la majorité des paramètres personnels se situe entre 3 et 4. Cependant, si on continue à augmenter ce paramètre, cela va avoir tendance à polariser les agents, ce qui va générer des simulations à la fin desquelles on a beaucoup d'agents sceptiques et beaucoup d'agents croyants, mais très peu d'agents neutres.
+
+La quantité de statues et la quantité d'ordinateurs ont aussi un impact sur l'opinion en fin de simulation, mais celui-ci est bien moins important. De manière générale, plus il y a de statues, plus l'opinion moyenne en fin de simulation sera élevée, et plus il y a d'ordinateurs, plus l'opinion moyenne en fin de simulation sera basse (car comme la simulation tend vers le scepticisme, une majorité d'ordinateurs n'auront pas Go installé).
+
+Enfin, d'autres paramètres comme le charisme ou les relations semblent accélérer la vitesse à laquelle l'opinion moyenne converge. Plus ceux-ci sont élevés, plus l'opinion moyenne converge rapidement. Le déplacement en Center of Mass a aussi le même effet car il augmente la quantité d'interactions entre les agents, là où le déplacement en Heatmap diminue la quantité d'interactions et donc la vitesse de convergence par la même occasion.
+
+3 datasets `agents_1.json`, `agents_2.json` et `agents_3.json`, sont disponible dans le dossier tests dont les résultats respectifs sont un simulation ou les agents tendent vers le scepticisme, une simulation ou les agents tendent vers le croyantisme et une simulation ou les agents sont polarisés.
+
+### 6.💡 Idées pour la suite
 
 Tout au long de ce rapport nous avons vu des améliorations possibles pour ce projet. Nous pouvons en explorer d'avantage.
 
@@ -248,7 +270,7 @@ Finalement, pour l'instant l'utilisateur ne peut pas intervenir dans la simulati
 
 ## 😇  Les Gophètes
 
-- 🌱 Lepretre Thomas
+- 🌱 Leprêtre Thomas
 - 🐤 Perdereau Tom
 - 🌟 Saby Loyola Sophie
-- 👽 Sporck Trombini Gabriel
+- 👽 Sporck Trombi
