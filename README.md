@@ -24,7 +24,16 @@ Dans le cas où vous voudriez récupérer tout le projet (notamment les sources 
 git clone https://github.com/Tmegaa/The-Gophecy.git
 ```
 
+Par défaut, la simulation affiche une zone rectangulaire autour de chaque agent représentant leur champ de perception (acuité). Cette zone peut être masquée pour une meilleure lisibilité :
+
+1. Ouvrez le fichier `pkg/Simulation/sim.go`
+2. Dans la méthode `Draw`, commentez la ligne suivante :
+   ```go
+   // sim.drawAcuite(screen)
+   ```
+
 ## 🔬  Tests avec différents cas de figure
+
 
 > TODO: fill this
 
