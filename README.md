@@ -28,6 +28,21 @@ git clone https://github.com/Tmegaa/The-Gophecy.git
 
 > TODO: fill this
 
+
+
+
+Une branche `Feat/Variants` a été créée pour explorer différentes configurations de la simulation. Cette branche introduit plusieurs modifications :
+
+1. **Variation des Objets dans l'Environnement :**
+   - Modification du nombre d'ordinateurs et de statues
+   - Ces changements nécessitent l'utilisation du logiciel TILED pour générer le fichier JSON de la carte avec le placement précis des objets
+
+2. **Nouveaux Types d'Agents :**
+   - Introduction de trois sous-types d'agents basés sur leur paramètre personnel
+   - Ces sous-types permettent de tester différentes dynamiques de comportement et d'interaction
+
+Ces modifications permettent d'étudier l'impact de différentes configurations sur le comportement global du système et l'évolution des croyances des agents.
+
 ## 💻 La Gophétie
 
 ### 1. 📐 L'architecture
