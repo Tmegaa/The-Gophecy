@@ -54,30 +54,18 @@ Les fichiers `.bat` sont des scripts qui exécutent des simulations avec différ
 1. **Test 1** : Simulation avec une seule statue.
 
    - **Objectif** : Étudier l'exploration et les interactions des agents autour d’un seul point d'intérêt fixe.
-   - **Résultats Attendus** :
-     - _Carte de Chaleur (HeatMap)_ : Cartographie des environs de la statue.
-     - _Aléatoire (Random)_ : Introduit de la variabilité dans le mouvement.
-     - _Patrouille (Patrol)_ : Assure un schéma de surveillance autour de la statue.
 
 2. **Test 2** : Simulation avec trois statues.
 
    - **Objectif** : Évaluer comment les agents répartissent leur attention entre plusieurs points d'intérêt.
-   - **Résultats Attendus** :
-     - _Centre de Masse (Center of Mass)_ : Concentre les agents autour des statues.
-     - _Patrouille (Patrol)_ : Surveille les zones proches des trois statues.
 
 3. **Test 3** : Simulation avec trois statues et 15 PC.
 
    - **Objectif** : Observer l'équilibre entre l'exploration des statues et l'interaction avec les PC interactifs.
-   - **Résultats Attendus** :
-     - _Carte de Chaleur (HeatMap)_ et _Aléatoire (Random)_ : Essentiels pour localiser les PC.
-     - _Patrouille (Patrol)_ et _Centre de Masse (Center of Mass)_ : Priorisent les zones proches des statues.
 
 4. **Test 4** : Introduction de Nouveaux Types d'Agents.
    - **Objectif** : Analyser les interactions entre les agents **Convaincant**, **Indépendant** et **Explorateur**.
-   - **Résultats Attendus** :
-     - La dynamique apportée par les agents **Convaincant** modifie les schémas de comportement.
-     - Les différentes stratégies influencent l'efficacité collective.
+
 
 ---
 
